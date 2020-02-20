@@ -38,7 +38,7 @@ smarva_input_params = {
     'output_size':1 if test_mode else 3,
     'num_layers':1 if test_mode else 2,
     'n_heads':1 if test_mode else 3,
-    'dropout':0.2,
+    'dropout':0.25,
     'batch_first':True,
     'cuda':True,
     'mode':'static',
@@ -49,8 +49,8 @@ smarva_input_params = {
 lr=0.0005
 clip = True # options: True, False
 max_grad_norm=5
-kld_annealing_start_epoch = 100
-kld_annealing_max = 0.6
+kld_annealing_start_epoch = 0
+kld_annealing_max = 0.7
 kld_annealing_intervals=[15, 10, 5]
 kld_latent_loss_weight=1
 kld_attention_loss_weight=.5
@@ -150,7 +150,7 @@ with mlflow.start_run():
             epoch_loss += loss.item()
             epoch_recon_loss += recon_loss.data.item()
             epoch_kld_latent_loss += kld_latent_loss.data.item()
-            epoch_kld_attention_loss += kld_attention_loss.data.item()
+            epoch_kld_attention_loss += kld_attention_loss if isinstance(kld_attention_loss, int) else kld_attention_loss.data.item()
             
             optimizer.step()
 

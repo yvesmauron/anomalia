@@ -475,14 +475,14 @@ class SMAVRA(nn.Module):
         )
         # ----------------------------------------------------
         # 4.) Variational - self attention
-        self.variational_attention = Variational(
-            hidden_size=self.hidden_size, 
-            latent_size=self.attention_size
-        )
+        #self.variational_attention = Variational(
+        #    hidden_size=self.hidden_size, 
+        #    latent_size=self.attention_size
+        #)
         # ----------------------------------------------------
         # 5.) Decoder --> todo
         self.decoder = Decoder(
-            input_size=self.latent_size + self.attention_size, #self.attention_size, 
+            input_size=self.latent_size + self.hidden_size, #self.attention_size, 
             hidden_size=self.output_size, 
             num_layers=self.num_layers, 
             batch_first=self.batch_first,
@@ -496,9 +496,9 @@ class SMAVRA(nn.Module):
         # set loss function for reconstruction
         if self.reconstruction_loss_function == 'MSELoss':
             if self.mode == 'dynamic':
-                self.loss_fn = MaskedMSELoss(reduction='mean')
+                self.loss_fn = MaskedMSELoss(reduction='sum')
             else:
-                self.loss_fn = nn.MSELoss(reduction='mean')
+                self.loss_fn = nn.MSELoss(reduction='sum')
         else:
             NotImplementedError
         
@@ -527,7 +527,7 @@ class SMAVRA(nn.Module):
         
         # ----------------------------------------------------
         # attention - variational
-        attention = self.variational_attention(attention, mask=mask)
+        #attention = self.variational_attention(attention_out, mask=mask)
         
         # ----------------------------------------------------
         # decoder
@@ -577,10 +577,6 @@ class SMAVRA(nn.Module):
         # get multihead attention
         attention, attention_weights = self.attention(query=h_t, key=h_t, value=h_t, mask=mask)
 
-        # ----------------------------------------------------
-        # attention - variational
-        attention = self.variational_attention(attention, mask=mask)
-
         return h_t, latent, attention_weights, attention, lengths
     
     def decode(self, h_t, latent, attention, lengths, mask=None):
@@ -589,6 +585,7 @@ class SMAVRA(nn.Module):
         Arguments:
             input {tensor} -- input sequence
         """
+
         # ----------------------------------------------------
         # decoder
         # reformat latent to cat it on cols for decoder
@@ -674,7 +671,7 @@ class SMAVRA(nn.Module):
             decoded, _ = torch_utils.pad_packed_sequence(decoded, batch_first=True)
         
         kld_latent = self.kl_loss_latent()
-        kld_attention = self.kl_loss_attention(mask=mask)
+        kld_attention = 0 #self.kl_loss_attention(mask=mask)
         reconstruction = self.reconstruction_loss(x, decoded, mask=mask)
 
         return(reconstruction, kld_latent, kld_attention)
