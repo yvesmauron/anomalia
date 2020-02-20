@@ -145,10 +145,10 @@ if __name__ == "__main__":
             optimizer.step()
             t += 1
         
-        run.log('KLD-Annealing weight', kld_error_weight, step=epoch)
-        run.log('Reconstruction Loss', (epoch_recon_loss / t), step=epoch)
-        run.log('KLD-Latent Loss', (epoch_kld_latent_loss / t), step=epoch)
-        run.log('KLD-Attention Loss', (epoch_kld_attention_loss / t), step=epoch)
-        run.log('Loss', (epoch_loss / t), step=epoch)
+        run.log('KLD-Annealing weight', kld_error_weight)
+        run.log('Reconstruction Loss', (epoch_recon_loss / t))
+        run.log('KLD-Latent Loss', (epoch_kld_latent_loss / t))
+        run.log('KLD-Attention Loss', (epoch_kld_attention_loss / t))
+        run.log('Loss', (epoch_loss / t))
 
-    torch.save(smavra, os.path.join('model', 'smavra.pt'))
+    torch.save(smavra, 'smavra.pt')
