@@ -84,3 +84,5 @@ plt.hist(latent.squeeze().cpu().detach().numpy())
 plt.show()
 
 
+
+torch.load('./data/test/test_re')

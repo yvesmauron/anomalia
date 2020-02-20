@@ -26,8 +26,8 @@ if __name__ == "__main__":
     ####################################################
     # parametrization
     # data loader
-    batch_size = 64
-    train_path = '/train_resmed.pt'
+    batch_size = 128
+    train_path = './train_resmed.pt'
     # smavra
     smarva_input_params = {
         'input_size':1 if test_mode else 3,
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     kld_attention_loss_weight=.5
 
     # training duration
-    n_epochs = 400
+    n_epochs=1000
     #
     if test_mode:
         dataset = TestDataset(200, 200)
@@ -105,12 +105,16 @@ if __name__ == "__main__":
 
     for key, value in smarva_input_params.items():
         run.log(key, value)
-        run.log('n_epochs', n_epochs)
-        run.log('kld_annealing_start_epoch', kld_annealing_start_epoch)
-        run.log('kld_annealing_max', kld_annealing_max)
-        run.log('kld_annealing_intervals', kld_annealing_intervals)
-        run.log('kld_latent_loss_weight',  kld_latent_loss_weight)
-        run.log('kld_attention_loss_weight',  kld_attention_loss_weight)
+
+    run.log('n_epochs', n_epochs)
+    run.log('kld_annealing_start_epoch', kld_annealing_start_epoch)
+    run.log('kld_annealing_max', kld_annealing_max)
+
+    for i, value in enumerate(kld_annealing_intervals):
+        run.log('kld_annealing_intervals_{}'.format(i), value)
+    
+    run.log('kld_latent_loss_weight',  kld_latent_loss_weight)
+    run.log('kld_attention_loss_weight',  kld_attention_loss_weight)
 
     for epoch in range(n_epochs):
         epoch_loss = 0
@@ -148,30 +152,3 @@ if __name__ == "__main__":
         run.log('Loss', (epoch_loss / t), step=epoch)
 
     torch.save(smavra, os.path.join('model', 'smavra.pt'))
-        #       #if (t + 1) % print_every == 0:
-        #       print('Batch: {}/{}............. \n'.format(i, num_batches), end=' ')
-        #       print(
-        #           'Recon: {:.4f} \n KLD-Latent: {:.4f} \n KLD-Attention: {:.4f} \n Loss: {:.4f} \n'.format(
-        #               recon_loss,
-        #               kld_latent_loss,
-        #               kld_attention_loss,
-        #               loss
-        #           )
-        #       )
-    #
-        #   print('Average loss: {:.4f}'.format(epoch_loss / t))
-
-
-    #smavra = SMAVRA(**smarva_input_params)
-    #smavra.load_state_dict(torch.load(os.path.join(model_path, 'smavrae.pt')))
-    #    date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    #    model_dir_path = os.path.join('models', 'smavrae', date_time)
-    #    
-    #    if not os.path.exists(model_dir_path):
-    #        os.makedirs(model_dir_path)
-    #    
-    #    model_path = os.path.join(model_dir_path, 'smavrae.pt')
-    #
-    #    torch.save(smavra, model_path)
-
-    #mlflow.pytorch.load_model('runs:/14fdf9cade444e24834a41e87bc14bfd/model')
