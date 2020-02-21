@@ -14,8 +14,7 @@ from datetime import datetime
 
 import numpy as np
 
-class ModelTrainer(self):
-
+class ModelTrainer():
     def __init__(self, logger):
         self.logger = logger
         self.test_mode = False
@@ -58,7 +57,7 @@ class ModelTrainer(self):
         # training duration
         n_epochs = 400
         #
-        if self.TestMode:
+        if self.test_mode:
             dataset = TestDataset(200, 200)
         else:
             dataset = ResmedDatasetEpoch(train_path, batch_size)
