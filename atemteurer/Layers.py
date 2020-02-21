@@ -467,11 +467,16 @@ class SMAVRA(nn.Module):
         )
         # ----------------------------------------------------
         # 3.) Multihead self-attention
+
+        device = 'cuda:0'
+        if not self.use_cuda : 
+            device = 'cpu'
+        
         self.attention = MultiHeadAttention(
             hidden_size=self.hidden_size, 
             n_heads=self.n_heads, 
             dropout=self.dropout, 
-            device='cuda:0' # remove in future
+            device=device # remove in future
         )
         # ----------------------------------------------------
         # 4.) Variational - self attention
