@@ -7,7 +7,7 @@ import model_trainer
 #from scripts.training 
 import mlflow_logger
 
-test_mode = True
+test_mode = False
 
 name = "SMARVA"
 if test_mode:
@@ -18,6 +18,6 @@ logger = mlflow_logger.MLFlowLogger(name, "model", './environment.yml', ['./atem
 train = model_trainer.ModelTrainer(logger)
 train.test_mode = test_mode
 
-train.device = 'cpu'
+train.device = 'cuda'
 
 model = train.run('data/resmed/train/train_resmed.pt')
