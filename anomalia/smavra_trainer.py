@@ -2,6 +2,7 @@ from anomalia.trainer import Trainer
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import inspect
 
 
 class SmavraTrainer(Trainer):
@@ -18,7 +19,6 @@ class SmavraTrainer(Trainer):
             train_data {string} -- path to train data directory
             logger {anomalia.MLLogger} -- subclass of MLLogger
         """
-        super(SmavraTrainer, self).__init__()
         self.model = model
         self.dataset = dataset
         self.optimizer = optimizer
@@ -28,7 +28,6 @@ class SmavraTrainer(Trainer):
         self, 
         n_epochs,
         batch_size,
-        lr=0.0005,
         clip = True, 
         max_grad_norm=5,
         kld_annealing_start_epoch = 0,
@@ -52,9 +51,12 @@ class SmavraTrainer(Trainer):
             kld_attention_loss_weight {float} -- [description] (default: {.5})
         """
         # log input parameters
-        for key, value in locals().items():
-            # take care of self at some point
-            self.logger.log(key, str(value))
+        param_dict = dict(locals())
+        param_dict['self'] = 'SMAVRA'
+
+        for key, value in param_dict.items():
+            if key != 'self':
+                self.logger.log(key, str(value))
 
         # get number of batches
         loader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True)
@@ -79,14 +81,14 @@ class SmavraTrainer(Trainer):
                 max_weight=kld_annealing_max
             )
 
-            for _, batch, mask in enumerate(loader):
+            for _, batch in enumerate(loader):
 
                 self.optimizer.zero_grad()
                 out = self.model(batch)
 
                 batch_true = batch[:,:,:3]
                 
-                recon_loss, kld_latent_loss, kld_attention_loss = self.model.compute_loss(out, batch_true, mask=mask)
+                recon_loss, kld_latent_loss, kld_attention_loss = self.model.compute_loss(out, batch_true, mask=None)
 
                 loss = (
                     recon_loss + 
@@ -115,11 +117,11 @@ class SmavraTrainer(Trainer):
 
                 t += 1
             
-            self.logger('KLD-Annealing weight', kld_error_weight, step=epoch)
-            self.logger('Reconstruction Loss', (epoch_recon_loss / t), step=epoch)
-            self.logger('KLD-Latent Loss', (epoch_kld_latent_loss / t), step=epoch)
-            self.logger('KLD-Attention Loss', (epoch_kld_attention_loss / t), step=epoch)
-            self.logger('Loss', (epoch_loss / t), step=epoch)
+            self.logger.log('KLD-Annealing weight', kld_error_weight, step=epoch)
+            self.logger.log('Reconstruction Loss', (epoch_recon_loss / t), step=epoch)
+            self.logger.log('KLD-Latent Loss', (epoch_kld_latent_loss / t), step=epoch)
+            self.logger.log('KLD-Attention Loss', (epoch_kld_attention_loss / t), step=epoch)
+            self.logger.log('Loss', (epoch_loss / t), step=epoch)
         
         self.logger.save_model(self.model)
 
@@ -156,3 +158,6 @@ class SmavraTrainer(Trainer):
             return (current_state - intervals[0]) * growth_speed
         else:
             return max_weight
+    
+    def validate(self):
+        pass

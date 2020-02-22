@@ -1,14 +1,10 @@
 import torch
 from torch.utils.data import Dataset
-# scale transformations
-import numpy as np
-from sklearn.preprocessing import RobustScaler, StandardScaler
 # utils
 import os
 import logging
 import logging.config
 # custom libraries
-import atemteurer.utils as utils
 
 # onehot encoding
 # batch_size = 3
@@ -55,7 +51,6 @@ class ResmedDatasetEpoch(Dataset):
         self.batch_size = batch_size
         self.transform = transform
         self.device = device
-        self.mask = None # for compatibility with possible dynamic mode
 
         # cut length that it matches with batch_size
         self.respiration_data = torch.stack(self.respiration_data, dim=0)
@@ -73,9 +68,9 @@ class ResmedDatasetEpoch(Dataset):
 
     def __getitem__(self, idx):
         if self.device == 'cuda':
-            return(self.respiration_data[idx].cuda(), self.mask)
+            return(self.respiration_data[idx].cuda())
         else:
-            return(self.respiration_data[idx], self.mask)
+            return(self.respiration_data[idx])
     
     def backtransform(self, x):
         return (x * (self.stds * 2)) + self.means

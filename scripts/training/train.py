@@ -2,43 +2,67 @@ import os
 import sys
 sys.path.append(os.getcwd())
 from anomalia.smavra import SMAVRA
-from anomalia.datasets import ResmedDatasetEpoch
+from anomalia.datasets import ResmedDatasetEpoch, TestDataset
 from anomalia.logging import MLFlowLogger, AzureLogger
+from anomalia.smavra_trainer import SmavraTrainer
+import torch
 
-test_mode = False
-batch_size = 64
-train_path = 'data/resmed/train/train_resmed.pt'
-experiment_name = 'SMAVRA'
-use_cuda = True
+# --------------------------------------------------------
+# set globals
+TEST_MODE = False
+BATCH_SIZE = 64
+N_EPOCHS = 400
+TRAIN_PATH = 'data/resmed/train/train_resmed.pt'
+EXPERIMENT_NAME = 'SMAVRA'
+USE_CUDA = True
 
+# --------------------------------------------------------
+# define learner
 smarva_input_params = {
-    'input_size':1 if test_mode else 3,
-    'hidden_size':10 if test_mode else 30,
-    'latent_size':1 if test_mode else 3,
-    'attention_size':1 if test_mode else 3,
-    'output_size':1 if test_mode else 3,
-    'num_layers':1 if test_mode else 2,
-    'n_heads':1 if test_mode else 3,
+    'input_size':1 if TEST_MODE else 3,
+    'hidden_size':10 if TEST_MODE else 30,
+    'latent_size':1 if TEST_MODE else 3,
+    'attention_size':1 if TEST_MODE else 3,
+    'output_size':1 if TEST_MODE else 3,
+    'num_layers':1 if TEST_MODE else 2,
+    'n_heads':1 if TEST_MODE else 3,
     'dropout':0.25,
     'batch_first':True,
-    'cuda': True,
+    'cuda': USE_CUDA,
     'mode':'static',
     'rnn_type':'LSTM'
 }
 
 smavra = SMAVRA(**smarva_input_params)
 
-if use_cuda:
+if USE_CUDA:
     smavra.cuda()
 
-logger = MLFlowLogger(experiment_name, "model", './environment.yml', ['./atemteurer'])
+# --------------------------------------------------------
+# define dataset
 
-dataset = ResmedDatasetEpoch(train_path, batch_size)
+if not TEST_MODE:
+    dataset = ResmedDatasetEpoch(TRAIN_PATH, BATCH_SIZE)
+else:
+    dataset = TestDataset(200, 200)
 
+# --------------------------------------------------------
+# define logger
+logger = MLFlowLogger(EXPERIMENT_NAME, "model", './environment.yml', ['./anomalia'])
 
-#train = model_trainer.ModelTrainer(logger)
-train.test_mode = test_mode
+# --------------------------------------------------------
+# define optimizer
+lr=0.0005
+optimizer = torch.optim.Adam(smavra.parameters(), lr=lr)
 
-train.device = 'cuda'
+# --------------------------------------------------------
+# let the trainer take care of training
+trainer = SmavraTrainer(model=smavra, dataset=dataset, optimizer=optimizer, logger=logger)
 
-model = train.run('data/resmed/train/train_resmed.pt')
+# --------------------------------------------------------
+# Start run including logging
+logger.start_run()
+logger.log('lr', lr) # think about a better way to do this
+trainer.fit(n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
+# start run
+logger.end_run()

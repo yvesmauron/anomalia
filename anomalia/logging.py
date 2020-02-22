@@ -16,6 +16,12 @@ class MLLogger(ABC):
         pass
 
     @abstractmethod
+    def start_run(self):
+        """Indicate start of run
+        """
+        pass
+
+    @abstractmethod
     def log(self):
         """Log a metric of parameter
         """
@@ -27,6 +33,11 @@ class MLLogger(ABC):
         """
         pass
 
+    @abstractmethod
+    def end_run(self):
+        """Indicate end of run
+        """
+        pass
 
 class MLFlowLogger(MLLogger):
     """Logger for MLFlow
@@ -40,13 +51,16 @@ class MLFlowLogger(MLLogger):
             conda_env {string} -- path to conda envrionment file
             code_paths {string} -- path to coda directory
         """
-        super(AzureLogger, self).__init__()
         self.experiment_name = experiment_name
         self.artifact_path = artifact_path 
         self.env = conda_env
         self.code_paths = code_paths
 
         mlflow.set_experiment(self.experiment_name)
+
+    def start_run(self):
+        """Indicate start of run
+        """
         mlflow.start_run()
 
     def log(self, key, value, step=None):
@@ -62,7 +76,7 @@ class MLFlowLogger(MLLogger):
         if step == None:
             mlflow.log_param(key, value)
         else:
-            mlflow.log_param(key, value, step)
+            mlflow.log_metric(key, value, step)
 
     def save_model(self, model, flavor='pytorch'):
         """Save trained model  
@@ -81,6 +95,11 @@ class MLFlowLogger(MLLogger):
         else:
             NotImplementedError
 
+    def end_run(self):
+        """Indicate end of run
+        """
+        mlflow.end_run()
+
 
 class AzureLogger(MLLogger):
     """Logger class for azure
@@ -92,13 +111,14 @@ class AzureLogger(MLLogger):
             experimentName {string} -- name of the constructor
             artifact_path {string} -- path to artifact
         """
-        super(AzureLogger, self).__init__()
         self.experiment_name = experiment_name
         self.artifact_path = artifact_path
 
-        # start run
-        self.run = Run.get_context()
 
+    def start_run(self):
+        """Indicate start of run
+        """
+        self.run = Run.get_context()
 
     def log(self, key, value, step=None):
         """Log metric or parameter
@@ -110,8 +130,7 @@ class AzureLogger(MLLogger):
         Keyword Arguments:
             step {int} -- not used (default: {None})
         """
-        if step == None:
-            self.run.log_param(key, value)
+        self.run.log_param(key, value)
 
 
     def save_model(self, model, flavor='pytorch'):
@@ -126,4 +145,10 @@ class AzureLogger(MLLogger):
             torch.save(model. os.path.join(self.artifact_path, 'model.pt'))
         else:
             NotImplementedError
+    
+    def end_run(self):
+        """Indicate end of run
+        """
+        # not necessary
+        pass
 
