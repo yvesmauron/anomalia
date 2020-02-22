@@ -108,8 +108,7 @@ venv.bak/
 /misc
 /mlruns
 .vscode
-
-
+lit/
 
 #--- old
 .DS_Store
