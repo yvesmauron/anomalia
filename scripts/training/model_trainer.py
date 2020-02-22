@@ -2,8 +2,9 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-from atemteurer.Layers import SMAVRA
-from atemteurer.Datasets import ResmedDatasetEpoch, TestDataset
+from anomalia.layers import SMAVRA
+from anomalia.datasets import ResmedDatasetEpoch, TestDataset
+from anomalia.logging import AzureLogger, MLFlowLogger
 from torch.utils.data import DataLoader
 
 import torch as torch
@@ -26,49 +27,15 @@ class ModelTrainer():
         ####################################################
         # parametrization
         # data loader
-        batch_size = 64
-        train_path = 'data/resmed/train/train_resmed.pt'
-        # smavra
-        smarva_input_params = {
-            'input_size':1 if self.test_mode else 3,
-            'hidden_size':10 if self.test_mode else 30,
-            'latent_size':1 if self.test_mode else 3,
-            'attention_size':1 if self.test_mode else 3,
-            'output_size':1 if self.test_mode else 3,
-            'num_layers':1 if self.test_mode else 2,
-            'n_heads':1 if self.test_mode else 3,
-            'dropout':0.25,
-            'batch_first':True,
-            'cuda': self.device == 'cuda',
-            'mode':'static',
-            'rnn_type':'LSTM'
-        }
 
-        # trainer
-        lr=0.0005
-        clip = True # options: True, False
-        max_grad_norm=5
-        kld_annealing_start_epoch = 0
-        kld_annealing_max = 0.7
-        kld_annealing_intervals=[15, 10, 5]
-        kld_latent_loss_weight=1
-        kld_attention_loss_weight=.5
+        # smavra
+
 
         # training duration
-        n_epochs = 400
-        #
-        if self.test_mode:
-            dataset = TestDataset(200, 200)
-        else:
-            dataset = ResmedDatasetEpoch(train_path, batch_size)
 
         num_batches = dataset.__len__() // batch_size
 
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-        smavra = SMAVRA(
-            **smarva_input_params
-        )
 
         #
         ## Define Loss, Optimizer
@@ -79,29 +46,13 @@ class ModelTrainer():
         if self.device == 'cuda':
             smavra.cuda()
 
-        mask = None #torch.ones(X_padded.shape).masked_fill(X_padded == 0, 0)
 
         # todo:
         # - kld annealing
         # - weightening kld latent versus kld attention
         # - put wights into metric or param
 
-        def kld_annealing(start_epoch, n_epochs, epoch, intervals=[3, 4, 3], max_weight=1):
-            if len(intervals) != 3:
-                ValueError
 
-            intervals = np.array(intervals)
-            iteration_cycle = intervals.sum()
-            phase_bounds = intervals.cumsum()
-            growth_speed = max_weight / intervals[1]
-            
-            current_state = epoch % iteration_cycle
-            if current_state < intervals[0] or epoch < start_epoch:
-                return 0
-            elif intervals[0] <= current_state and current_state < phase_bounds[1]:
-                return (current_state - intervals[0]) * growth_speed
-            else:
-                return max_weight
 
 
         

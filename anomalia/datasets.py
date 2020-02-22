@@ -55,6 +55,7 @@ class ResmedDatasetEpoch(Dataset):
         self.batch_size = batch_size
         self.transform = transform
         self.device = device
+        self.mask = None # for compatibility with possible dynamic mode
 
         # cut length that it matches with batch_size
         self.respiration_data = torch.stack(self.respiration_data, dim=0)
@@ -72,9 +73,9 @@ class ResmedDatasetEpoch(Dataset):
 
     def __getitem__(self, idx):
         if self.device == 'cuda':
-            return(self.respiration_data[idx].cuda())
+            return(self.respiration_data[idx].cuda(), self.mask)
         else:
-            return(self.respiration_data[idx])
+            return(self.respiration_data[idx], self.mask)
     
     def backtransform(self, x):
         return (x * (self.stds * 2)) + self.means
