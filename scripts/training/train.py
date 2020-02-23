@@ -1,68 +1,134 @@
+# general imports
 import os
 import sys
+import argparse
+# add working directory to python path for later imports
 sys.path.append(os.getcwd())
+# deep learning libraries
+import torch
+# project package dependencies
 from anomalia.smavra import SMAVRA
 from anomalia.datasets import ResmedDatasetEpoch, TestDataset
 from anomalia.logging import MLFlowLogger, AzureLogger
 from anomalia.smavra_trainer import SmavraTrainer
-import torch
+# azrue dependencies
+from azureml.core import Workspace, Dataset
+
+
+# ------------------------------------------------------------------------
+# Parse arguments
+parser = argparse.ArgumentParser(
+    description='create train and test set for lstm'
+)
+
+# get arguments
+parser.add_argument(
+    "--ws_config", 
+    help="Configuration for azure ml workspace",
+    default="./config/ws_config.json"
+)
+
+# get arguments
+parser.add_argument(
+    "--output_dir", 
+    help="output dir to log",
+    default='./outputs'
+)
+
+# get arguments
+parser.add_argument(
+    "--ds_name", 
+    help="Configuration for azure ml workspace",
+    default="resmed_train"
+)
+
+# get arguments
+parser.add_argument(
+    "--batch_size", 
+    help="The batch size that should be used to train the model",
+    default=64
+)
+
+# get arguments
+parser.add_argument(
+    "--n_epochs", 
+    help="The number of epochs to train the neural network",
+    default=4
+)
+
+args = parser.parse_args()
 
 # --------------------------------------------------------
 # set globals
 TEST_MODE = False
-BATCH_SIZE = 64
-N_EPOCHS = 400
-TRAIN_PATH = 'data/resmed/train/train_resmed.pt'
 EXPERIMENT_NAME = 'SMAVRA'
 USE_CUDA = True
 
-# --------------------------------------------------------
-# define learner
-smarva_input_params = {
-    'input_size':1 if TEST_MODE else 3,
-    'hidden_size':10 if TEST_MODE else 30,
-    'latent_size':1 if TEST_MODE else 3,
-    'attention_size':1 if TEST_MODE else 3,
-    'output_size':1 if TEST_MODE else 3,
-    'num_layers':1 if TEST_MODE else 2,
-    'n_heads':1 if TEST_MODE else 3,
-    'dropout':0.25,
-    'batch_first':True,
-    'cuda': USE_CUDA,
-    'mode':'static',
-    'rnn_type':'LSTM'
-}
+if __name__ == "__main__":
 
-smavra = SMAVRA(**smarva_input_params)
+    ws_config_path = str(args.ws_config)
+    batch_size = int(args.batch_size)
+    n_epochs = int(args.n_epochs)
+    ds_name = str(args.ds_name)
+    output_dir = str(args.output_dir)
 
-if USE_CUDA:
-    smavra.cuda()
+    # --------------------------------------------------------
+    # init workspace
+    if not os.path.exists(ws_config_path):
+        raise FileNotFoundError
 
-# --------------------------------------------------------
-# define dataset
+    ws = Workspace.from_config(path=ws_config_path)
 
-if not TEST_MODE:
-    dataset = ResmedDatasetEpoch(TRAIN_PATH, BATCH_SIZE)
-else:
-    dataset = TestDataset(200, 200)
+    train_files = Dataset.get_by_name(ws, name=ds_name)
+    train_paths = train_files.download(target_path='.', overwrite=True)
 
-# --------------------------------------------------------
-# define logger
-logger = MLFlowLogger(EXPERIMENT_NAME, "model", './environment.yml', ['./anomalia'])
+    # --------------------------------------------------------
+    # define learner
+    smarva_input_params = {
+        'input_size':1 if TEST_MODE else 3,
+        'hidden_size':10 if TEST_MODE else 30,
+        'latent_size':1 if TEST_MODE else 3,
+        'attention_size':1 if TEST_MODE else 3,
+        'output_size':1 if TEST_MODE else 3,
+        'num_layers':1 if TEST_MODE else 2,
+        'n_heads':1 if TEST_MODE else 3,
+        'dropout':0.25,
+        'batch_first':True,
+        'cuda': USE_CUDA,
+        'mode':'static',
+        'rnn_type':'LSTM'
+    }
 
-# --------------------------------------------------------
-# define optimizer
-lr=0.0005
-optimizer = torch.optim.Adam(smavra.parameters(), lr=lr)
+    smavra = SMAVRA(**smarva_input_params)
 
-# --------------------------------------------------------
-# let the trainer take care of training
-trainer = SmavraTrainer(model=smavra, dataset=dataset, optimizer=optimizer, logger=logger)
+    if USE_CUDA:
+        smavra.cuda()
 
-# --------------------------------------------------------
-# Start run including logging
-logger.start_run()
-logger.log('lr', lr) # think about a better way to do this
-trainer.fit(n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
-# start run
-logger.end_run()
+    # --------------------------------------------------------
+    # define dataset
+
+    if not TEST_MODE:
+        dataset = ResmedDatasetEpoch(train_paths[0], batch_size)
+    else:
+        dataset = TestDataset(200, 200)
+
+    # --------------------------------------------------------
+    # define logger
+    logger = AzureLogger(ws, EXPERIMENT_NAME, output_dir)
+
+    # --------------------------------------------------------
+    # define optimizer
+    lr=0.0005
+    optimizer = torch.optim.Adam(smavra.parameters(), lr=lr)
+
+    # --------------------------------------------------------
+    # let the trainer take care of training
+    trainer = SmavraTrainer(model=smavra, dataset=dataset, optimizer=optimizer, logger=logger)
+
+    # --------------------------------------------------------
+    # Start run including logging
+    logger.start_run()
+    logger.log('lr', lr) # think about a better way to do this
+    trainer.fit(n_epochs=n_epochs, batch_size=batch_size)
+    # start run
+    logger.end_run()

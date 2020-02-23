@@ -4,6 +4,7 @@ import mlflow
 import mlflow.pytorch
 import torch
 from azureml.core.run import Run
+from azureml.core import Experiment
 
 
 class MLLogger(ABC):
@@ -104,16 +105,18 @@ class MLFlowLogger(MLLogger):
 class AzureLogger(MLLogger):
     """Logger class for azure
     """
-    def __init__(self, experiment_name, artifact_path):
+    def __init__(self, workspace, experiment_name, artifact_path):
         """Constructor
         
         Arguments:
-            experimentName {string} -- name of the constructor
+            run {Run} -- object Run
             artifact_path {string} -- path to artifact
         """
-        self.experiment_name = experiment_name
         self.artifact_path = artifact_path
-
+        self.experiment_name = experiment_name
+        self.workspace= workspace
+            
+        self.experiment = Experiment(workspace, name=experiment_name)
 
     def start_run(self):
         """Indicate start of run
@@ -130,7 +133,7 @@ class AzureLogger(MLLogger):
         Keyword Arguments:
             step {int} -- not used (default: {None})
         """
-        self.run.log_param(key, value)
+        self.run.log(key, value)
 
 
     def save_model(self, model, flavor='pytorch'):
@@ -142,7 +145,7 @@ class AzureLogger(MLLogger):
         """
         if flavor == 'pytorch':
             # note that repeated saving could be implemented
-            torch.save(model. os.path.join(self.artifact_path, 'model.pt'))
+            torch.save(model, os.path.join(self.artifact_path, 'model.pt'))
         else:
             NotImplementedError
     
