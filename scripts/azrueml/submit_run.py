@@ -92,6 +92,7 @@ if __name__ == '__main__':
     experiment_folder = str(args.experiment_folder)
     env_file = str(args.env_file)
     compute_node = str(args.compute_node)
+    ompute_node_name = compute_node.replace('_', '')
     batch_size = int(args.batch_size)
     n_epochs = int(args.n_epochs)
     ds_name = str(args.ds_name)
@@ -130,19 +131,19 @@ if __name__ == '__main__':
 
     # copy train scripts to 
     shutil.copytree(src='./anomalia', dst=os.path.join(experiment_folder, 'anomalia'))
-    shutil.copyfile(src='./scripts/training/aml_train.py', dst=os.path.join(experiment_folder, 'train.py'))
-    #shutil.copyfile(src='./data/resmed/train/train_resmed.pt', dst=os.path.join(experiment_folder, 'train_resmed.pt'))
+    shutil.copyfile(src='./scripts/training/train.py', dst=os.path.join(experiment_folder, 'train.py'))
+    shutil.copyfile(src='./config/ws_config.json', dst=os.path.join(experiment_folder, 'config', 'ws_config.json'))
     shutil.copyfile(src='./environment.yml', dst=os.path.join(experiment_folder, 'environment.yml'))
     shutil.copyfile(src='./config/logging.conf', dst=os.path.join(experiment_folder, 'config', 'logging.conf'))
 
     # ------------------------------------------------------------------------
     # Compute target
 
-    if compute_node is not 'local':
+    if ompute_node_name is not 'local':
         try:
             # check if ComputeTarget is valid here, as it seems to be abstract class
             # see: https://docs.microsoft.com/en-us/azure/machine-learning/how-to-train-pytorch
-            compute_target = ComputeTarget(workspace=ws, name=compute_node)
+            compute_target = ComputeTarget(workspace=ws, name=ompute_node_name)
             logger.info('Found existing compute target.')
         except ComputeTargetException:
             logger.info('Creating a new compute target...')
@@ -152,7 +153,7 @@ if __name__ == '__main__':
             )
 
             # create the cluster
-            compute_target = ComputeTarget.create(ws, compute_node.replace('_', ''), compute_config)
+            compute_target = ComputeTarget.create(ws, ompute_node_name, compute_config)
 
             compute_target.wait_for_completion(show_output=True)
     else:
