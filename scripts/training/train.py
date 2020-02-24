@@ -53,7 +53,13 @@ parser.add_argument(
 parser.add_argument(
     "--n_epochs", 
     help="The number of epochs to train the neural network",
-    default=4
+    default=300
+)
+
+parser.add_argument(
+    "--compute_node", 
+    help="The file path that holds the environment file",
+    default='local'
 )
 
 args = parser.parse_args()
@@ -71,6 +77,7 @@ if __name__ == "__main__":
     n_epochs = int(args.n_epochs)
     ds_name = str(args.ds_name)
     output_dir = str(args.output_dir)
+    compute_node = str(args.compute_node)
 
     # --------------------------------------------------------
     # init workspace
@@ -88,7 +95,7 @@ if __name__ == "__main__":
         'input_size':1 if TEST_MODE else 3,
         'hidden_size':10 if TEST_MODE else 30,
         'latent_size':1 if TEST_MODE else 3,
-        'attention_size':1 if TEST_MODE else 3,
+        #'attention_size':1 if TEST_MODE else 3, # not supported anymore
         'output_size':1 if TEST_MODE else 3,
         'num_layers':1 if TEST_MODE else 2,
         'n_heads':1 if TEST_MODE else 3,
@@ -96,7 +103,8 @@ if __name__ == "__main__":
         'batch_first':True,
         'cuda': USE_CUDA,
         'mode':'static',
-        'rnn_type':'LSTM'
+        'rnn_type':'LSTM',
+        'use_variational_attention':False
     }
 
     smavra = SMAVRA(**smarva_input_params)
@@ -114,7 +122,11 @@ if __name__ == "__main__":
 
     # --------------------------------------------------------
     # define logger
-    logger = AzureLogger(ws, EXPERIMENT_NAME, output_dir)
+    if compute_node is 'local':
+        logger = MLFlowLogger(EXPERIMENT_NAME, "model", './environment.yml', ['./anomalia'])
+    else:
+        logger = AzureLogger(ws, EXPERIMENT_NAME, output_dir)
+    
 
     # --------------------------------------------------------
     # define optimizer

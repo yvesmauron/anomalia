@@ -2,7 +2,7 @@ import torch as torch
 from torch import nn as nn
 import torch.nn.utils.rnn as torch_utils
 import torch.nn.functional as F
-from anomalia.layers import Encoder, Variational, MultiHeadAttention, Decoder
+from anomalia.layers import Encoder, Variational, MultiHeadAttention, Decoder, MaskedMSELoss
 
 
 class SMAVRA(nn.Module):
@@ -16,7 +16,7 @@ class SMAVRA(nn.Module):
         input_size,
         hidden_size,
         latent_size,
-        attention_size,
+        #attention_size,
         output_size,
         num_layers,
         n_heads=2,
@@ -25,7 +25,8 @@ class SMAVRA(nn.Module):
         cuda=True,
         reconstruction_loss_function = 'MSELoss',
         mode='dynamic',
-        rnn_type='LSTM'
+        rnn_type='LSTM',
+        use_variational_attention=True
         ):
         """Constructor
         
@@ -54,7 +55,7 @@ class SMAVRA(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.latent_size = latent_size
-        self.attention_size = attention_size
+        #self.attention_size = attention_size
         self.output_size = output_size
         self.num_layers = num_layers
         self.n_heads = n_heads
@@ -63,6 +64,7 @@ class SMAVRA(nn.Module):
         self.reconstruction_loss_function = reconstruction_loss_function
         self.mode = mode
         self.rnn_type = rnn_type
+        self.use_variational_attention = use_variational_attention
         
         # set up layer architecture
         # 1.) encoder
@@ -92,13 +94,16 @@ class SMAVRA(nn.Module):
             dropout=self.dropout, 
             device=device # remove in future
         )
-        # ----------------------------------------------------
-        # 4.) Variational - self attention
-        #self.variational_attention = Variational(
-        #    hidden_size=self.hidden_size, 
-        #    latent_size=self.attention_size
-        #)
-        # ----------------------------------------------------
+
+        if self.use_variational_attention:
+            # ----------------------------------------------------
+            # 4.) Variational - self attention
+            self.variational_attention = Variational(
+               hidden_size=self.hidden_size, 
+               latent_size=self.hidden_size, # attention size not supported
+               use_identity=True
+            )
+            # ----------------------------------------------------
         # 5.) Decoder --> todo
         self.decoder = Decoder(
             input_size=self.latent_size + self.hidden_size, #self.attention_size, 
@@ -146,7 +151,8 @@ class SMAVRA(nn.Module):
         
         # ----------------------------------------------------
         # attention - variational
-        #attention = self.variational_attention(attention_out, mask=mask)
+        if self.use_variational_attention:
+            attention = self.variational_attention(attention, mask=mask)
         
         # ----------------------------------------------------
         # decoder
@@ -195,6 +201,11 @@ class SMAVRA(nn.Module):
 
         # get multihead attention
         attention, attention_weights = self.attention(query=h_t, key=h_t, value=h_t, mask=mask)
+
+        # ----------------------------------------------------
+        # attention - variational
+        if self.use_variational_attention:
+            attention = self.variational_attention(attention, mask=mask)
 
         return h_t, latent, attention_weights, attention, lengths
     
@@ -290,7 +301,7 @@ class SMAVRA(nn.Module):
             decoded, _ = torch_utils.pad_packed_sequence(decoded, batch_first=True)
         
         kld_latent = self.kl_loss_latent()
-        kld_attention = 0 #self.kl_loss_attention(mask=mask)
+        kld_attention = self.kl_loss_attention(mask=mask) if self.use_variational_attention else 0
         reconstruction = self.reconstruction_loss(x, decoded, mask=mask)
 
         return(reconstruction, kld_latent, kld_attention)

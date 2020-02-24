@@ -81,7 +81,7 @@ class Variational(nn.Module):
     Arguments:
         torch {nn.Module} -- Inherits from nn.Module
     """
-    def __init__(self, hidden_size, latent_size):
+    def __init__(self, hidden_size, latent_size, use_identity=False):
         """Constructor
         
         Arguments:
@@ -92,16 +92,30 @@ class Variational(nn.Module):
 
         self.hidden_size = hidden_size
         self.latent_size = latent_size
+        self.use_identity = use_identity
 
         # define linear adapter from h_end to mean, logvar
-        self.hidden_to_mu = nn.Linear(self.hidden_size, self.latent_size)
-        self.hidden_to_logvar = nn.Linear(self.hidden_size, self.latent_size)
+        if use_identity:
+            
+            # NOTE: that if you use identity transformation, 
+            # the output of this layer will be showing the 
+            # same dimensionality as the input.
 
-        # Fills the input Tensor with values according to the method described in 
-        # Understanding the difficulty of training deep feedforward neural networks - 
-        # Glorot, X. & Bengio, Y. (2010)
-        nn.init.xavier_uniform_(self.hidden_to_mu.weight)
-        nn.init.xavier_uniform_(self.hidden_to_logvar.weight)
+            # use identity transformation
+            self.hidden_to_mu = nn.Identity()
+            self.hidden_to_logvar = nn.Identity()
+ 
+        else:
+
+            self.hidden_to_mu = nn.Linear(self.hidden_size, self.latent_size)
+            self.hidden_to_logvar = nn.Linear(self.hidden_size, self.latent_size)
+
+            # Fills the input Tensor with values according to the method described in 
+            # Understanding the difficulty of training deep feedforward neural networks - 
+            # Glorot, X. & Bengio, Y. (2010)
+            nn.init.xavier_uniform_(self.hidden_to_mu.weight)
+            nn.init.xavier_uniform_(self.hidden_to_logvar.weight)
+
 
     def forward(self, hidden, mask=None):
         """Forward pass
@@ -128,6 +142,7 @@ class Variational(nn.Module):
         # mask output
         if mask is not None:
             latent = latent.masked_fill(mask == 0, 0)
+        
         return(latent)
 
 

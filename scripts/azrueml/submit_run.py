@@ -5,7 +5,7 @@ import argparse
 # add working directory to python path for later imports
 sys.path.append(os.getcwd())
 
-from azureml.core import Experiment
+from azureml.core import Experiment, Datastore
 from azureml.core.workspace import Workspace
 from azureml.core.runconfig import RunConfiguration
 from azureml.core.compute import ComputeTarget, AmlCompute
@@ -82,6 +82,12 @@ parser.add_argument(
     default=1000
 )
 
+# get arguments
+parser.add_argument(
+    "--data_store_name", 
+    help="Configuration for azure ml workspace",
+    default="atemlake"
+)
 
 args = parser.parse_args()
 
@@ -97,6 +103,7 @@ if __name__ == '__main__':
     n_epochs = int(args.n_epochs)
     ds_name = str(args.ds_name)
     output_dir = str(args.output_dir)
+    data_store_name = str(args.data_store_name)
 
 
     # ------------------------------------------------------------------------
@@ -169,8 +176,11 @@ if __name__ == '__main__':
         '--output_dir': output_dir,
         '--ds_name':ds_name,
         '--batch_size':batch_size,
-        '--n_epochs':n_epochs
+        '--n_epochs':n_epochs,
+        '--compute_node':compute_node
     }
+
+    #datastore = Datastore.get(ws, data_store_name)
 
     estimator = PyTorch(
         source_directory=experiment_folder, 
@@ -181,6 +191,7 @@ if __name__ == '__main__':
         use_docker=True if compute_target is not 'local' else False,
         user_managed=False if compute_target is not 'local' else True,
         conda_dependencies_file='environment.yml' if compute_target is not 'local' else None
+        #source_directory_data_store=datastore
     )
 
     run = experiment.submit(estimator)

@@ -10,7 +10,7 @@ library(shinymanager)
 # load your dependencies
 files_sources = list.files('./R', full.names = T)
 sapply(files_sources, source)
-
+date_stamp = '20200219'
 
 # inactivity script
 inactivity <- "

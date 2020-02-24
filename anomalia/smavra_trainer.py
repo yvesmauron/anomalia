@@ -31,10 +31,10 @@ class SmavraTrainer(Trainer):
         clip = True, 
         max_grad_norm=5,
         kld_annealing_start_epoch = 0,
-        kld_annealing_max = 0.7,
-        kld_annealing_intervals = [15, 10, 5],
-        kld_latent_loss_weight=1,
-        kld_attention_loss_weight=.5
+        kld_annealing_max = 0.6,
+        kld_annealing_intervals = [15, 20, 5],
+        kld_latent_loss_weight=8,
+        kld_attention_loss_weight=.4
         ):
         """[summary]
         
@@ -99,7 +99,6 @@ class SmavraTrainer(Trainer):
                             kld_attention_loss_weight* kld_attention_loss
                         )
                     )
-                
                 )
 
                 loss.backward() # Does backpropagation and calculates gradients

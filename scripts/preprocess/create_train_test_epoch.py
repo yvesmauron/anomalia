@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 import logging
 import logging.config
 # atemreich imports
-from atemteurer import utils 
+from anomalia import utils 
 # dev
 import matplotlib.pyplot as plt
 
