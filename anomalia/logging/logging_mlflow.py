@@ -1,7 +1,7 @@
 import mlflow
 import mlflow.pytorch
 
-from anomalia.logging import MLLogger
+from .logging import MLLogger
 
 class MLFlowLogger(MLLogger):
     """Logger for MLFlow

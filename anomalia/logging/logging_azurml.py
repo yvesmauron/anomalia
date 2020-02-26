@@ -4,7 +4,7 @@ from azureml.core.run import Run
 from azureml.core import Experiment
 import torch
 
-from anomalia.logging import MLLogger
+from .logging import MLLogger
 
 class AzureLogger(MLLogger):
     """Logger class for azure
