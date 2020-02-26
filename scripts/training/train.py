@@ -9,8 +9,8 @@ import torch
 # project package dependencies
 from anomalia.smavra import SMAVRA
 from anomalia.datasets import ResmedDatasetEpoch, TestDataset
-from anomalia.logging_azurml import AzureLogger
-from anomalia.logging_mlflow import MLFlowLogger
+from anomalia.logging.logging_azurml import AzureLogger
+from anomalia.logging.logging_mlflow import MLFlowLogger
 from anomalia.smavra_trainer import SmavraTrainer
 # azrue dependencies
 from azureml.core import Workspace, Dataset
