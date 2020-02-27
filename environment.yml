@@ -1,9 +1,8 @@
-name: rnn_anomaly
+name: anomalia
 channels:
   - defaults
 dependencies:
   - python=3.7.5
-  - requests
   - matplotlib
   - scikit-learn
   - numpy
