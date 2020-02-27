@@ -87,8 +87,11 @@ if __name__ == "__main__":
 
     ws = Workspace.from_config(path=ws_config_path)
 
-    train_files = Dataset.get_by_name(ws, name=ds_name)
-    train_paths = train_files.download(target_path='.', overwrite=True)
+    if compute_node == 'local':
+        train_paths = ['data/resmed/train/train_resmed.pt']
+    else:
+        train_files = Dataset.get_by_name(ws, name=ds_name)
+        train_paths = train_files.download(target_path='.', overwrite=True)
 
     # --------------------------------------------------------
     # define learner

@@ -112,3 +112,4 @@ lit/
 
 #--- old
 !config/logging.conf
+models/

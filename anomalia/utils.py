@@ -17,7 +17,7 @@ logging.config.fileConfig(
 )
 
 # create logger
-logger = logging.getLogger('atemteurer')
+logger = logging.getLogger('anomalia')
 
 def generate_lstm_input_sequence(input_tensor, seq_len, window_shift_step_size):
     """LSTM input

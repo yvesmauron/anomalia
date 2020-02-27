@@ -79,7 +79,7 @@ parser.add_argument(
 parser.add_argument(
     "--n_epochs", 
     help="The number of epochs to train the neural network",
-    default=1000
+    default=400
 )
 
 # get arguments

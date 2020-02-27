@@ -2,8 +2,8 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-from anomalia.Layers import SMAVRA
-from anomalia.Datasets import ResmedDatasetEpoch, TestDataset
+from anomalia.layers import SMAVRA
+from anomalia.datasets import ResmedDatasetEpoch, TestDataset
 from torch.utils.data import DataLoader
 
 import torch as torch
@@ -21,7 +21,7 @@ import mlflow.pytorch
 
 test_mode = False
 
-run_id = '859803c3d01e4eb4bfae47806cca67c8'
+run_id = '695a350b357f42debd61e0a744a28335'
 
 if test_mode:
     mlflow.set_experiment('SMARVA_Test')
@@ -35,12 +35,13 @@ train_path = 'data/resmed/train/train_resmed.pt'
 batch_size = 1
 device = 'cuda'
 dataset = ResmedDatasetEpoch(train_path, batch_size)
+#dataset = dataset.respiration_data[20,:,:]
 
 train_means = dataset.means
 train_std = dataset.stds
 
 test_dataset = ResmedDatasetEpoch('data/resmed/test/test_resmed.pt', batch_size, means=train_means, stds=train_std)
-entire_test_set = test_dataset.respiration_data
+entire_test_set = test_dataset.respiration_data[:20,:,:]
 eval_dataset = ResmedDatasetEpoch('data/resmed/eval/eval_resmed.pt', batch_size, means=train_means, stds=train_std)
 entire_eval_set = eval_dataset.respiration_data[:20,:,:]
 
@@ -86,3 +87,17 @@ plt.show()
 
 
 torch.load('./data/test/test_re')
+
+
+
+import pandas as pd
+import numpy as np
+from pandas.api.types import CategoricalDtype
+from plotnine import *
+from plotnine.data import mpg
+
+
+(ggplot(mpg)         # defining what data to use
+ + aes(x='class')    # defining what variable to use
+ + geom_bar(size=20) # defining the type of plot to use
+)

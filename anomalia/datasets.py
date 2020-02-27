@@ -29,7 +29,7 @@ logging.config.fileConfig(
 )
 
 # create logger
-logger = logging.getLogger('atemteurer')
+logger = logging.getLogger('anomalia')
 
 
 class ResmedDatasetEpoch(Dataset):

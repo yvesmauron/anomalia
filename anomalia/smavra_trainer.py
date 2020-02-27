@@ -1,7 +1,10 @@
+import os
+import shutil
 from anomalia.trainer import Trainer
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+from datetime import datetime as dt
 import inspect
 
 
@@ -11,7 +14,7 @@ class SmavraTrainer(Trainer):
     Arguments:
         Trainer {anomalia.trainer.Trainer} -- base class
     """
-    def __init__(self, model, dataset, optimizer, logger):
+    def __init__(self, model, dataset, optimizer, logger, checkpoint_path=None):
         """Constructor
         
         Arguments:
@@ -23,7 +26,19 @@ class SmavraTrainer(Trainer):
         self.dataset = dataset
         self.optimizer = optimizer
         self.logger = logger
+
+        if checkpoint_path is None:
+            self.checkpoint_path = os.path.join('models', dt.now().strftime("%Y%m%d_%H%M%S"))
+        else:
+            self.checkpoint_path = checkpoint_path
+
+            # check if arguments are valid, i.e. if directory exists
+        if os.path.exists(self.checkpoint_path):
+            FileExistsError
+        else:
+            os.makedirs(self.checkpoint_path)
     
+
     def fit(
         self, 
         n_epochs,
@@ -121,6 +136,8 @@ class SmavraTrainer(Trainer):
             self.logger.log('KLD-Latent Loss', (epoch_kld_latent_loss / t), step=epoch)
             self.logger.log('KLD-Attention Loss', (epoch_kld_attention_loss / t), step=epoch)
             self.logger.log('Loss', (epoch_loss / t), step=epoch)
+
+            self.checkpoint(epoch, epoch_loss)
         
         self.logger.save_model(self.model)
 
@@ -160,3 +177,23 @@ class SmavraTrainer(Trainer):
     
     def validate(self):
         pass
+
+
+    def checkpoint(self, epoch, loss):
+        """Save checkpoint
+        
+        Arguments:
+            epoch {int} -- epoch of this checkpointS
+            loss {float} -- loss of this epoch
+        """
+
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'loss': loss
+            }, os.path.join(
+                self.checkpoint_path, 
+                "epoch_{}_loss_{:.4f}".format(epoch, loss) + ".pt"
+            )
+        )

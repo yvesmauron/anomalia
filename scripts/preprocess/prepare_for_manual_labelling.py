@@ -5,7 +5,6 @@ sys.path.append(os.getcwd())
 
 import json
 import argparse
-from datetime import datetime
 import glob
 import shutil
 # compression
@@ -15,7 +14,7 @@ import torch
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from datetime import datetime
+from datetime import datetime as dt
 # logging
 import logging
 import logging.config
@@ -57,7 +56,7 @@ if __name__ == '__main__':
 
     source_device = str(args.source_device)
     seq_len = int(args.seq_len)
-    now = datetime.now() # current date and time
+    now = dt.now() # current date and time
     date_time = now.strftime("%Y%m%d")
 
     raw_path = os.path.join('data', source_device)
