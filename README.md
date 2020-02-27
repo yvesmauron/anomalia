@@ -47,6 +47,23 @@ As azure services can be used, there is some additional configuration necessary,
 }
 ```
 
+*Optionally*, you can also define `ds_config.json` which lets you directly create file datasets within the azure machine learning servcies workspace from a folder stored in the azure data lake storage. The structure to
+
+```json
+{
+    "data_store_name":"DATA_STORE_NAME",
+    "datasets":[
+        {
+            "name":"NAME_OF_THE_DATASET",
+            "description":"DESCRIPTION",
+            "path":"PATH_WITHIN_THE_ADLS"
+        },
+        ...
+    ]
+}
+``
+
+> Note: if you are registering the dataset within azure machine learning services, you can then also connect to thsi dataset ML designer.
 
 
 ## Running experiments on Azure
