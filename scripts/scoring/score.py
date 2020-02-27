@@ -2,8 +2,8 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-from atemteurer.Layers import SMAVRA
-from atemteurer.Datasets import ResmedDatasetEpoch, TestDataset
+from anomalia.Layers import SMAVRA
+from anomalia.Datasets import ResmedDatasetEpoch, TestDataset
 from torch.utils.data import DataLoader
 
 import torch as torch

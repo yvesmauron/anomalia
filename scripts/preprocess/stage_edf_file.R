@@ -4,7 +4,7 @@ require(foreach)
 require(doSNOW)
 require(parallel)
 require(progress)
-#setwd("C:/Users/yvesm/OneDrive - Trivadis AG/projects/atemreich/atemteurer")
+#setwd("C:/Users/yvesm/OneDrive - Trivadis AG/projects/atemreich/anomalia")
 # --------------------------------------------------------------------------
 # Set up data directory structure
 # --------------------------------------------------------------------------

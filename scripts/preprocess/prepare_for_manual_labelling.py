@@ -20,7 +20,7 @@ from datetime import datetime
 import logging
 import logging.config
 # atemreich imports
-from atemteurer import utils 
+from anomalia import utils 
 # dev
 import matplotlib.pyplot as plt
 
@@ -31,7 +31,7 @@ logging.config.fileConfig(
 )
 
 # create logger
-logger = logging.getLogger('atemteurer')
+logger = logging.getLogger('anomalia')
 
 # ------------------------------------------------------------------------
 # Parse arguments

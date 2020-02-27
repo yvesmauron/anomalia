@@ -30,7 +30,7 @@ logging.config.fileConfig(
 )
 
 # create logger
-logger = logging.getLogger('atemteurer')
+logger = logging.getLogger('anomalia')
 
 # ------------------------------------------------------------------------
 # Parse arguments
