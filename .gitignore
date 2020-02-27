@@ -160,7 +160,9 @@ nodeLanguageServer.*/**
 data/
 mlruns/
 misc/
-config/
+config/*
 models/
 lit/
 outputs/
+
+!config/logging.conf
