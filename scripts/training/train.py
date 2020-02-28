@@ -47,14 +47,14 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size", 
     help="The batch size that should be used to train the model",
-    default=64
+    default=128
 )
 
 # get arguments
 parser.add_argument(
     "--n_epochs", 
     help="The number of epochs to train the neural network",
-    default=300
+    default=1500
 )
 
 parser.add_argument(
@@ -85,11 +85,10 @@ if __name__ == "__main__":
     if not os.path.exists(ws_config_path):
         raise FileNotFoundError
 
-    ws = Workspace.from_config(path=ws_config_path)
-
     if compute_node == 'local':
         train_paths = ['data/resmed/train/train_resmed.pt']
     else:
+        ws = Workspace.from_config(path=ws_config_path)
         train_files = Dataset.get_by_name(ws, name=ds_name)
         train_paths = train_files.download(target_path='.', overwrite=True)
 
@@ -98,7 +97,7 @@ if __name__ == "__main__":
     smarva_input_params = {
         'input_size':1 if TEST_MODE else 3,
         'hidden_size':10 if TEST_MODE else 30,
-        'latent_size':1 if TEST_MODE else 3,
+        'latent_size':1 if TEST_MODE else 15,
         #'attention_size':1 if TEST_MODE else 3, # not supported anymore
         'output_size':1 if TEST_MODE else 3,
         'num_layers':1 if TEST_MODE else 2,
@@ -108,7 +107,7 @@ if __name__ == "__main__":
         'cuda': USE_CUDA,
         'mode':'static',
         'rnn_type':'LSTM',
-        'use_variational_attention':False
+        'use_variational_attention':True
     }
 
     smavra = SMAVRA(**smarva_input_params)
@@ -139,12 +138,28 @@ if __name__ == "__main__":
 
     # --------------------------------------------------------
     # let the trainer take care of training
-    trainer = SmavraTrainer(model=smavra, dataset=dataset, optimizer=optimizer, logger=logger)
+    trainer = SmavraTrainer(
+        model=smavra, 
+        dataset=dataset, 
+        optimizer=optimizer, 
+        logger=logger,
+        checkpoint_interval=10
+    )
 
     # --------------------------------------------------------
     # Start run including logging
     logger.start_run()
     logger.log('lr', lr) # think about a better way to do this
-    trainer.fit(n_epochs=n_epochs, batch_size=batch_size)
+    trainer.fit(
+        n_epochs=n_epochs, 
+        batch_size=batch_size,
+        clip = True, 
+        max_grad_norm=5,
+        kld_annealing_start_epoch = 0,
+        kld_annealing_max = 0.6,
+        kld_annealing_intervals = [15, 25, 5],
+        kld_latent_loss_weight=.6,
+        kld_attention_loss_weight=.3
+    )
     # start run
     logger.end_run()

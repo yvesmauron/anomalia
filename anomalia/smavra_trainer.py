@@ -14,7 +14,7 @@ class SmavraTrainer(Trainer):
     Arguments:
         Trainer {anomalia.trainer.Trainer} -- base class
     """
-    def __init__(self, model, dataset, optimizer, logger, checkpoint_path=None):
+    def __init__(self, model, dataset, optimizer, logger, checkpoint_interval=1, checkpoint_path=None):
         """Constructor
         
         Arguments:
@@ -26,6 +26,7 @@ class SmavraTrainer(Trainer):
         self.dataset = dataset
         self.optimizer = optimizer
         self.logger = logger
+        self.checkpoint_interval = checkpoint_interval
 
         if checkpoint_path is None:
             self.checkpoint_path = os.path.join('models', dt.now().strftime("%Y%m%d_%H%M%S"))
@@ -47,9 +48,9 @@ class SmavraTrainer(Trainer):
         max_grad_norm=5,
         kld_annealing_start_epoch = 0,
         kld_annealing_max = 0.6,
-        kld_annealing_intervals = [15, 20, 5],
-        kld_latent_loss_weight=8,
-        kld_attention_loss_weight=.4
+        kld_annealing_intervals = [15, 30, 5],
+        kld_latent_loss_weight=.6,
+        kld_attention_loss_weight=.3
         ):
         """[summary]
         
@@ -137,7 +138,9 @@ class SmavraTrainer(Trainer):
             self.logger.log('KLD-Attention Loss', (epoch_kld_attention_loss / t), step=epoch)
             self.logger.log('Loss', (epoch_loss / t), step=epoch)
 
-            self.checkpoint(epoch, epoch_loss)
+            # set checkpoint
+            if epoch % self.checkpoint_interval == 0:
+                self.checkpoint(epoch, epoch_loss)
         
         self.logger.save_model(self.model)
 
@@ -194,6 +197,6 @@ class SmavraTrainer(Trainer):
             'loss': loss
             }, os.path.join(
                 self.checkpoint_path, 
-                "epoch_{}_loss_{:.4f}".format(epoch, loss) + ".pt"
+                "epoch_{:04d}_loss_{:.5f}".format(epoch, loss) + ".pt"
             )
         )

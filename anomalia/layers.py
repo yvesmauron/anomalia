@@ -95,7 +95,7 @@ class Variational(nn.Module):
         self.use_identity = use_identity
 
         # define linear adapter from h_end to mean, logvar
-        if use_identity:
+        if self.use_identity:
             
             # NOTE: that if you use identity transformation, 
             # the output of this layer will be showing the 
@@ -103,7 +103,10 @@ class Variational(nn.Module):
 
             # use identity transformation
             self.hidden_to_mu = nn.Identity()
-            self.hidden_to_logvar = nn.Identity()
+            self.hidden_to_tanh = nn.Linear(self.hidden_size, self.latent_size)
+            self.act_tanh = nn.Tanh()
+            self.than_to_exp = nn.Linear(self.hidden_size, self.latent_size)
+            self.act_elu = nn.ELU()
  
         else:
 
@@ -125,7 +128,14 @@ class Variational(nn.Module):
         """
         # get mu and logvar
         self.mu = self.hidden_to_mu(hidden)
-        self.logvar = self.hidden_to_logvar(hidden)
+        # activation layer
+        if self.use_identity:
+            self.logvar = self.hidden_to_tanh(hidden)
+            self.logvar = self.act_tanh(self.logvar)
+            self.logvar = self.than_to_exp(self.logvar)
+            self.logvar = self.act_elu(self.logvar)
+        else:
+            self.logvar = self.hidden_to_logvar(hidden)
 
         # calculate std        
         std = self.logvar.mul(0.5).exp_()

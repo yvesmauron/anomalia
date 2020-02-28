@@ -93,7 +93,7 @@ for epoch in range(len(ordered_checkpoint_list)):
                 axis_title_y = element_blank()
             )
         )
-        plot.save(filename = os.path.join(model_fitting_data_dir, '{:03d}.png'.format(epoch)), height=15, width=20, units = 'cm', dpi=250) 
+        plot.save(filename = os.path.join(model_fitting_data_dir, '{:04d}.png'.format(epoch)), height=15, width=20, units = 'cm', dpi=250) 
 
 
 
