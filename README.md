@@ -63,7 +63,7 @@ As azure services can be used, there is some additional configuration necessary,
 }
 ```
 
-> Note: if you are registering the dataset within azure machine learning services, you can then also connect to thsi dataset ML designer.
+> Note: if you are registering the dataset within azure machine learning services, you can then also connect to this dataset ML designer.
 
 ## Training Process
 
