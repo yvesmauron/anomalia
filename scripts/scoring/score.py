@@ -85,19 +85,3 @@ plt.hist(latent.squeeze().cpu().detach().numpy())
 plt.show()
 
 
-
-torch.load('./data/test/test_re')
-
-
-
-import pandas as pd
-import numpy as np
-from pandas.api.types import CategoricalDtype
-from plotnine import *
-from plotnine.data import mpg
-
-
-(ggplot(mpg)         # defining what data to use
- + aes(x='class')    # defining what variable to use
- + geom_bar(size=20) # defining the type of plot to use
-)
