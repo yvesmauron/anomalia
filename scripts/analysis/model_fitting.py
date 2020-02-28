@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-from anomalia.layers import SMAVRA
+from anomalia.smavra import SMAVRA
 from anomalia.datasets import ResmedDatasetEpoch, TestDataset
 from torch.utils.data import DataLoader
 
@@ -24,12 +24,12 @@ import mlflow.pytorch
 
 test_mode = False
 
-run_id = '695a350b357f42debd61e0a744a28335'
+run_id = '52a8cc5c398148989cb0584d1de67403'
 mlflow.set_experiment('SMARVA')
 
 # ------------------------------------
 # get checkpoints from directory
-training_run = 'models/20200227_195257/'
+training_run = './models/20200228_154043/'
 ordered_checkpoint_list = sorted(glob.glob(training_run + '*.pt'), key=os.path.getmtime)
 
 with open('order.txt', 'w') as filehandle:
@@ -71,6 +71,7 @@ def tensor_to_data_frame(tensor, epoch, device, result_type):
 for epoch in range(len(ordered_checkpoint_list)):
 
     checkpoint = torch.load(ordered_checkpoint_list[epoch])
+    epoch = epoch * 10
     smavra.load_state_dict(checkpoint['model_state_dict'])
     smavra.to(device)
     sample = sample.to(device)
@@ -108,14 +109,14 @@ eval_dataset = ResmedDatasetEpoch('data/resmed/eval/eval_resmed.pt', batch_size,
 entire_eval_set = eval_dataset.respiration_data[:20,:,:]
 
 if device == 'cuda':
-    entire_test_set = entire_test_set.cuda()
-    entire_eval_set = entire_eval_set.cuda()
+    entire_test_set = entire_test_set.to(device)
+    entire_eval_set = entire_eval_set.to(device)
 
-smavra = mlflow.pytorch.load_model('runs:/' + run_id + '/model')
+#smavra = mlflow.pytorch.load_model('runs:/' + run_id + '/model')
 
-smavra.eval()
+#smavra.eval()
 
-evaluate = False
+evaluate = True
 
 if evaluate:
     data = entire_eval_set
@@ -127,10 +128,24 @@ preds = smavra(data)
 # line plot
 idx = 2
 col = 0
-plot_data = torch.stack((data[idx,:,col], preds[idx,:,col]), dim=1).cpu().detach().numpy()
-
-plt.plot(plot_data)
-plt.show()
+recon_loss, _, _ = smavra.compute_loss(data, preds)
+rec_loss = recon_loss.item()
+preds = tensor_to_data_frame(preds[idx,:,], 1500, device, "Predictions")
+true = tensor_to_data_frame(data[idx,:,], 1500, device, "True")
+plot_data = true.append(preds)
+plot_data =pd.melt(plot_data, id_vars=['Index', 'Type','Epoch'], value_vars=['MaskPressure', 'RespFlow', 'DeliveredVolume'])
+        
+plot =(
+    ggplot(plot_data) +
+    aes(x = 'Index', y = 'value', color='factor(Type)') +
+    geom_line() +
+    facet_wrap('~variable', ncol=1, nrow=3) +
+    labs(color='Type', x='Epoch: {:.0f}; Loss: {:.4f}'.format(1500, rec_loss)) +
+    theme(
+        axis_title_y = element_blank()
+    )
+)
+plot.save('test.png')
 
 # compare loss with training loss
 recon_loss, kld_latent_loss, kld_attention_loss = smavra.compute_loss(data, preds)
@@ -144,6 +159,5 @@ plt.matshow(attention_head)
 plt.show()
 
 plt.hist(latent.squeeze().cpu().detach().numpy())
-plt.show()
 
 
