@@ -145,7 +145,7 @@ plot =(
         axis_title_y = element_blank()
     )
 )
-plot.save('test.png')
+plot
 
 # compare loss with training loss
 recon_loss, kld_latent_loss, kld_attention_loss = smavra.compute_loss(data, preds)

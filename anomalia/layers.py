@@ -302,7 +302,16 @@ class Decoder(nn.Module):
     Raises:
         NotImplementedError: Only RNNs of type LSTM and GRU are allowed. Otherwise this error this thrown.
     """
-    def __init__(self, input_size, hidden_size, num_layers, dropout=0, batch_first=True, rnn_type='LSTM'):
+    def __init__(
+            self,
+            input_size,
+            hidden_size,
+            num_layers,
+            dropout=0,
+            batch_first=True,
+            rnn_type='LSTM',
+            proba_output=False
+        ):
         """Constructor
         
         Arguments:
@@ -314,6 +323,7 @@ class Decoder(nn.Module):
             dropout {float} -- percentage of nodes that should switched out at any term (default: {0})
             batch_first {bool} -- if shape is (batch, sequence, features) or not (default: {True})
             rnn_type {str} -- which type of rnn cell should be used (default: {'LSTM'})
+            proba_output {bool} -- if it should output a probabilistic distribution (default: {bool})
         
         Raises:
             NotImplementedError: Only RNNs of type LSTM and GRU are allowed. Otherwise this error this thrown.
@@ -326,6 +336,8 @@ class Decoder(nn.Module):
         self.hidden_size = hidden_size
         # number of layers
         self.num_layers = num_layers
+        # proba
+        self.proba_output = proba_output
 
         # select the rnn_type connection
         if rnn_type == 'LSTM':
@@ -347,11 +359,19 @@ class Decoder(nn.Module):
         else:
             raise NotImplementedError
 
-        self.fc_linear = nn.Linear(self.hidden_size, self.hidden_size * 2)
-        self.fc_linear_out = nn.Linear(self.hidden_size * 2, self.hidden_size)
-        self.act_tanh = nn.Tanh()
+        # define output -- linear adaptor
+        self.hidden_to_tanh_mu = nn.Linear(self.hidden_size, self.hidden_size * 2)
+        self.tanh_mu = nn.Tanh()
+        self.tanh_to_mu = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
-        nn.init.xavier_uniform_(self.fc_linear.weight)
+        # if you want probalistic ouput measure -- define second output for scale
+        if proba_output:
+            self.hidden_to_tanh_scale = nn.Linear(self.hidden_size, self.hidden_size)
+            self.tanh_scale = nn.Tanh()
+            self.than_to_scale = nn.Linear(self.hidden_size, self.hidden_size)
+
+        nn.init.xavier_uniform_(self.hidden_to_tanh_mu.weight)
+        nn.init.xavier_uniform_(self.tanh_to_mu.weight)
 
     def forward(self, x, mask=None):
         """Foreward pass
@@ -367,377 +387,25 @@ class Decoder(nn.Module):
             h_t, _ = torch_utils.pad_packed_sequence(h_t, batch_first=True, padding_value=0)
         
         # linear layer
-        out = self.fc_linear(h_t)
-        # softplus
-        out = self.act_tanh(out)
+        mu = self.hidden_to_tanh_mu(h_t)
+        # tanh
+        mu = self.tanh_mu(mu)
         # second linear
-        out = self.fc_linear_out(out)
+        mu = self.tanh_to_mu(mu)
+        
+        # if probalisitc output
+        if self.proba_output:
+            scale = self.hidden_to_tanh_scale(h_t)
+            scale = self.tanh_scale(h_t)
+            scale = self.than_to_scale(h_t)
+            scale = scale.exp()
+        else:
+            scale = torch.zeros(mu.size())
+        
         # masking
         if mask is not None:
-            out = out.masked_fill(mask==0, 0)
-
-        return(h_t, (h_end, c_end), out)
-
-
-class MaskedMSELoss(torch.nn.modules.loss._Loss):
-    """Masked MSE Loss module
-    
-    Arguments:
-        torch {torch.nn.modules.loss._Loss} -- inherits from _Loss
-    """
-    def __init__(self, reduction='mean'):
-        """Constructor
+            mu = mu.masked_fill(mask==0, 0)
+            scale = scale.masked_fill(mask==0, 0)
         
-        Arguments:
-            reduction {string} -- how MSE should be reduced
-        """
-        super(MaskedMSELoss, self).__init__()
+        return(h_t, (h_end, c_end), (mu, scale))
 
-        if reduction != 'mean':
-            NotImplementedError
-        
-        self.reduction = reduction
-    
-    def forward(self, x, target, mask):
-        """Foreward pass
-        
-        Arguments:
-            x {torch.tensor} -- input tensor (output from neural network)
-            target {torch.tensor} -- target tensor 
-            mask {torch.tensor} -- mask tensor
-        """
-        assert x.shape == target.shape == mask.shape
-
-        squared_error = (torch.flatten(x) - torch.flatten(target)) ** 2.0 * torch.flatten(mask)
-
-        if self.reduction == 'mean':
-            result = torch.sum(squared_error) / torch.sum(mask)
-
-        return result
-
-
-#X = [
-#    torch.FloatTensor(
-#        [
-#            [1,1],
-#            [2,2],
-#            [3,3],
-#            [4,4],
-#            [5,5],
-#            [6,6]
-#        ]
-#    ),
-#    torch.FloatTensor(
-#        [
-#            [4,4],
-#            [5,5],
-#            [6,6],
-#            [7,7],
-#            [8,8],
-#            [9,9]
-#        ]
-#    )
-#]
-#
-#X = torch.stack(X)
-##Y = torch.FloatTensor([[4,5],[9,10]]).cuda()
-##X = torch.stack(X)
-## ####################################################
-## variables __init__()
-##lengths = [_.size(0) for _ in X]
-##X_cat = torch.cat(X, 0)
-##X_mean = X_cat.mean(0)
-##X_std = X_cat.std(0)
-##
-##
-##X = torch_utils.pad_sequence(sequences=X, batch_first=True)
-###X = (X - X_mean) / X_std
-##X = torch_utils.pack_padded_sequence(X, lengths=lengths, batch_first=True, enforce_sorted=False)
-##X_padded, lengths = torch_utils.pad_packed_sequence(X, batch_first=True, padding_value=0)
-## create mask
-#mask = None #torch.ones(X_padded.shape).masked_fill(X_padded == 0, 0)
-#
-#smavra = SMAVRA(
-#    input_size=2,
-#    hidden_size=8,
-#    latent_size=2,
-#    attention_size=2,
-#    output_size=2,
-#    num_layers=2,
-#    n_heads=4,
-#    dropout=0,
-#    batch_first=True,
-#    cuda=True,
-#    mode='static'
-#)
-#
-#X = X.cuda()
-##mask = mask.cuda()
-#X_padded = X #X_padded.cuda()
-#
-## Define hyperparameters
-#n_epochs = 400
-#lr=0.2
-##
-### Define Loss, Optimizer
-#optimizer = torch.optim.Adam(smavra.parameters(), lr=lr)
-#
-#smavra.train()
-### Training Run
-#for epoch in range(1, n_epochs + 1):
-#    optimizer.zero_grad() # Clears existing gradients from previous epoch
-#    decoded = smavra(X, mask=mask)
-#    reconstruction, kld_latent, kld_attention = smavra.compute_loss(X_padded, decoded, mask=mask)
-#    loss = (100*reconstruction) + (kld_latent + kld_attention)
-#    loss.backward() # Does backpropagation and calculates gradients
-#    optimizer.step() # Updates the weights accordingly
-#    
-#    if epoch%10 == 0:
-#        print('Epoch: {}/{}.............'.format(epoch, n_epochs), end=' ')
-#        print(
-#            'Recon: {:.4f} \n KLD-Latent: {:.4f} \n KLD-Attention: {:.4f} \n Loss: {:.4f}'.format(
-#                reconstruction,
-#                kld_latent,
-#                kld_attention,
-#                loss
-#            )
-#        )
-#
-#smavra.eval()
-#smavra(X, mask=mask)
-#
-#((smavra(X, mask=mask) * X_std.cuda()) + X_mean.cuda()).masked_fill(mask==0, 0)
-#
-#
-#smavra.variational_attention.mu
-
-## ####################################################
-## init module layers
-## ----------------------------------------------------
-## 1.) encoder
-#encoder = Encoder(
-#    input_size=input_size, 
-#    hidden_size=hidden_size, 
-#    num_layers=num_layers, 
-#    batch_first=batch_first
-#)
-## ----------------------------------------------------
-## 2.) variational - latent space
-#variational_latent = Variational(
-#    hidden_size=hidden_size, 
-#    latent_size=latent_size
-#)
-## ----------------------------------------------------
-## 3.) Multihead self-attention
-#attention = MultiHeadAttention(
-#    hidden_size=hidden_size, 
-#    n_heads=n_heads, 
-#    dropout=dropout, 
-#    device=device
-#)
-## ----------------------------------------------------
-## 4.) Variational - self attention
-#variational_attention = Variational(
-#    hidden_size=hidden_size, 
-#    latent_size=latent_size
-#)
-## ----------------------------------------------------
-## 5.) Decoder --> todo
-#decoder = Decoder(
-#    input_size=input_size+latent_size, 
-#    hidden_size=hidden_size, 
-#    num_layers=num_layers, 
-#    batch_first=batch_first
-#)
-## ####################################################
-## move everything to gpu
-#X = X.cuda()
-#encoder.cuda()
-#variational_latent.cuda()
-#attention.cuda()
-#variational_attention.cuda()
-#decoder.cuda()
-#
-## ####################################################
-## forward
-## ----------------------------------------------------
-## endocer
-#h_t, (h_end, c_end), h_end_out = encoder(X)
-## ----------------------------------------------------
-## latent space
-#latent = variational_latent(h_end_out)
-## ----------------------------------------------------
-## attention 
-#h_t_padded, _ = torch_utils.pad_packed_sequence(h_t, batch_first=True, padding_value=0)
-#mask = torch.ones(h_t_padded.shape).cuda().masked_fill(h_t_padded == 0, 0)
-#x, attention_weights = attention(query=h_t_padded, key=h_t_padded, value=h_t_padded, mask=mask)
-## ----------------------------------------------------
-## attention - variational
-#attention = variational_attention(x, mask=mask)
-#latent = latent.unsqueeze(1)
-#h_size = h_t_padded.shape[1]
-#latent = latent.repeat(1, h_size, 1)
-#latent = latent.masked_fill(mask == 0, 0)
-## ----------------------------------------------------
-## decoder
-#decoder_input = torch.cat((attention, latent), 2)
-#decoder_input = torch_utils.pack_padded_sequence(decoder_input, lengths=lengths, batch_first=True, enforce_sorted=False)
-#h_t, (h_end, c_end), h_end_out = decoder(decoder_input)
-#decoded, lengths = torch_utils.pad_packed_sequence(h_t, batch_first=True, padding_value=0)
-#attention_energy = torch.sum(h_t_padded, dim=2).t()
-#
-#
-#attention_weights = F.softmax(attention_energy, dim=0).unsqueeze(1)
-#htt = h_t_padded.transpose(0,1)
-#context = attention_weights.bmm(htt)
-#context.squeeze(1)
-#A
-#
-#batch_id = 0
-#hidden_dim = 1
-#attention_weights[0,0,:] @ h_t_padded[0,:,0]
-#
-#torch.matmul(h_t_padded[0,:,:], attention_weights[0,:,:].transpose(0,1))
-# Define hyperparameters
-#n_epochs = 400
-#lr=0.2
-#
-## Define Loss, Optimizer
-#criterion = nn.MSELoss().cuda()
-#optimizer = torch.optim.Adam(demo.parameters(), lr=lr)
-##packed_X = packed_X.cuda()
-##packed_X = packed_X.cuda()
-##_, (h_end, c_end) = demo.rnn(packed_X)
-###
-##torch_utils.pad_packed_sequence(_, batch_first=True)
-## Training Run
-#for epoch in range(1, n_epochs + 1):
-#    optimizer.zero_grad() # Clears existing gradients from previous epoch
-#    packed_X = packed_X.cuda()
-#    _, (h_end, c_end), output = demo(packed_X)
-#    loss = criterion(output, Y.view(-1).float())
-#    loss.backward() # Does backpropagation and calculates gradients
-#    optimizer.step() # Updates the weights accordingly
-#    
-#    if epoch%10 == 0:
-#        print('Epoch: {}/{}.............'.format(epoch, n_epochs), end=' ')
-#        print("Loss: {:.4f}".format(loss.item()))
-#
-#
-#
-#_, (h_end, c_end), output = demo(packed_X)
-#
-#output
-#
-#rnn = nn.LSTM(1, 5, 1)
-##h0 = torch.autograd.Variable(torch.zeros(1, 2, 1))
-#
-#output, (hidden, cell) = rnn(packed_X)
-#
-#output_unpacked = torch_utils.pad_packed_sequence(output)
-#
-#output_unpacked[0][:,0,:]
-#
-#
-#
-#class Attention(nn.Module):
-#    """Attention Layer
-#    
-#    Arguments:
-#        torch {nn.Module} -- Attention from encoder to decoder
-#    """
-#    def __init__(self, method='dot'):
-#        """Constructor
-#        
-#        Keyword Arguments:
-#            method {str} -- which method should be used (default: {'dot'})
-#        """
-#        super(Attention, self).__init__()
-#        self.method = method
-#
-#    def dot_method(self, hidden):
-#        """Dot method
-#        
-#        Arguments:
-#            hidden {[type]} -- input of hidden states (batch, t, features)
-#        """
-#        return(torch.sum(hidden, dim=2))
-#
-#    def forward(self, hidden):
-#        """[summary]
-#        
-#        Arguments:
-#            hidden {[type]} -- [description]
-#        """
-#        h_t_padded, _ = torch_utils.pad_packed_sequence(hidden, batch_first=True, padding_value=-float(99999))
-#        
-#        if self.method == 'dot':
-#            attention_energy = self.dot_method(hidden=h_t_padded)
-#        else:
-#            NotImplementedError
-#        
-#        attention_energy = attention_energy.t()
-#        
-#        attention_weights = F.softmax(attention_energy, dim=0).unsqueeze(1)
-#        context = attention_weights.bmm(h_t_padded)
-#
-#        return(attention_weights, context)
-#
-#
-#
-#
-#
-#import torch
-#import torch.nn as nn
-#from torch.distributions import Normal
-#
-#class Proba(nn.Module):
-#    def __init__(self, size):
-#        super(Proba, self).__init__()
-#        self.input_to_mu = nn.Linear(size, size)
-#        
-#    def forward(self, obs):
-#        self.mu = self.input_to_mu(obs)
-#        self.dist = Normal(self.mu, 0.2)
-#        log_prob = self.dist.log_prob(obs)
-#        return log_prob.mean()
-#
-#proba = Proba(10)
-#optimizer = torch.optim.Adam(proba.parameters(), lr=1e-3)
-#
-## fixed observation to reconstruct:
-#obs = torch.rand(10) + 10
-#
-## want to optimize the probability to reconstruct obs:
-#if __name__=="__main__":
-#
-#    for i in range(500):
-#        loss = -proba(obs)
-#        optimizer.zero_grad()
-#        loss.backward()
-#        optimizer.step()
-#
-#        if i%100==0:
-#            # should never be larger than 0:
-#            print("log_prob of obs =", -loss.item())
-#
-#
-#import torch.nn.functional as F
-#F.kl_div(proba.dist.sample().log(), obs)
-#
-#proba.dist.sample()
-
-
-#mu = torch.randn((6,2))
-#log_var = torch.randn((6,2))
-#
-#kld_element = mu.pow(2).add_(log_var.exp()).mul_(-1).add_(1).add_(log_var)
-#kld_no_mask = torch.sum(kld_element).mul_(-0.5)
-#
-#null_tensor = torch.zeros((2,2)).float()
-#mu = torch.cat([mu, null_tensor], 0)
-#log_var = torch.cat([log_var, null_tensor], 0)
-#
-#kld_element = mu.pow(2).add_(log_var.exp()).mul_(-1).add_(1).add_(log_var)
-#kld_mask = torch.sum(kld_element).mul_(-0.5)
-#

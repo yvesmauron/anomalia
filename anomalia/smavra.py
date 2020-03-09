@@ -2,7 +2,8 @@ import torch as torch
 from torch import nn as nn
 import torch.nn.utils.rnn as torch_utils
 import torch.nn.functional as F
-from anomalia.layers import Encoder, Variational, MultiHeadAttention, Decoder, MaskedMSELoss
+from anomalia.layers import Encoder, Variational, MultiHeadAttention, Decoder
+from anomalia.losses import MaskedMSELoss, InvLogProbLaplaceLoss
 
 
 class SMAVRA(nn.Module):
@@ -26,7 +27,8 @@ class SMAVRA(nn.Module):
         reconstruction_loss_function = 'MSELoss',
         mode='dynamic',
         rnn_type='LSTM',
-        use_variational_attention=True
+        use_variational_attention=True,
+        use_proba_output=False
         ):
         """Constructor
         
@@ -65,6 +67,7 @@ class SMAVRA(nn.Module):
         self.mode = mode
         self.rnn_type = rnn_type
         self.use_variational_attention = use_variational_attention
+        self.use_proba_output = use_proba_output
         
         # set up layer architecture
         # 1.) encoder
@@ -92,7 +95,7 @@ class SMAVRA(nn.Module):
             hidden_size=self.hidden_size, 
             n_heads=self.n_heads, 
             dropout=self.dropout, 
-            device=device # remove in future
+            device='cuda' if self.use_cuda else 'cpu' # remove in future
         )
 
         if self.use_variational_attention:
@@ -110,19 +113,25 @@ class SMAVRA(nn.Module):
             hidden_size=self.output_size, 
             num_layers=self.num_layers, 
             batch_first=self.batch_first,
-            rnn_type=self.rnn_type
+            rnn_type=self.rnn_type,
+            proba_output=self.use_proba_output
         )
 
         # if cuda, move module to gpu
         if self.use_cuda:
             self.cuda()
         
+        if self.mode == 'dynamic':
+            self.reconstruction_loss_function = 'MaskedMSELoss'
+        
         # set loss function for reconstruction
         if self.reconstruction_loss_function == 'MSELoss':
-            if self.mode == 'dynamic':
-                self.loss_fn = MaskedMSELoss(reduction='sum')
-            else:
-                self.loss_fn = nn.MSELoss(reduction='sum')
+            self.loss_fn = nn.MSELoss(reduction='sum')
+        if self.reconstruction_loss_function == 'MaskedMSELoss':
+            self.loss_fn = MaskedMSELoss(reduction='sum')
+        elif self.use_proba_output or self.reconstruction_loss_function == 'InvLogProbLaplaceLoss':
+            self.loss_fn = InvLogProbLaplaceLoss(reduction='sum')
+            self.reconstruction_loss_function = 'InvLogProbLaplaceLoss'
         else:
             NotImplementedError
         
@@ -134,48 +143,15 @@ class SMAVRA(nn.Module):
         """
         # ----------------------------------------------------
         # endocer
-        h_t, (_, _), h_end_out = self.encoder(X)
-
-        # ----------------------------------------------------
-        # latent space
-        latent = self.variational_latent(h_end_out)
-
-        # ----------------------------------------------------
-        # attention 
-        # unpack sequence, and pad it, if mode dynamic
-        if self.mode == 'dynamic':
-            h_t, lengths = torch_utils.pad_packed_sequence(h_t, batch_first=True, padding_value=0)
-
-        # get multihead attention
-        attention, _ = self.attention(query=h_t, key=h_t, value=h_t, mask=mask)
-        
-        # ----------------------------------------------------
-        # attention - variational
-        if self.use_variational_attention:
-            attention = self.variational_attention(attention, mask=mask)
+        h_t, latent, _, attention, lengths = self.encode(X, mask)
         
         # ----------------------------------------------------
         # decoder
-        # reformat latent to cat it on cols for decoder
-        latent = latent.unsqueeze(1)
-        # get sequnce length
-        seq_len = h_t.shape[1]
-        # repeat latent for seq_len
-        latent = latent.repeat(1, seq_len, 1)
-        # mask latent
-        if mask is not None:
-            latent = latent.masked_fill(mask == 0, 0)
-        # cat it on cols
-        decoder_input = torch.cat((attention, latent), 2)
-        # pack sequence again
-        if self.mode == 'dynamic':
-            decoder_input = torch_utils.pack_padded_sequence(decoder_input, lengths=lengths, batch_first=True, enforce_sorted=False)
-        # feed it through decoder
-        h_t, (_, _), decoded = self.decoder(decoder_input, mask=mask)
+        (decoded_mu, decoded_scale) = self.decode(h_t, latent, attention, lengths, mask=mask)
         #decoded, lengths = torch_utils.pad_packed_sequence(out, batch_first=True, padding_value=0)
         
         # return decoded result
-        return(decoded)
+        return((decoded_mu, decoded_scale))
 
     def encode(self, X, mask=None):
         """Encode Sequence
@@ -233,11 +209,11 @@ class SMAVRA(nn.Module):
         if self.mode == 'dynamic':
             decoder_input = torch_utils.pack_padded_sequence(decoder_input, lengths=lengths, batch_first=True, enforce_sorted=False)
         # feed it through decoder
-        h_t, (_, _), decoded = self.decoder(decoder_input, mask=mask)
+        _, (_, _), (decoded_mu, decoded_scale) = self.decoder(decoder_input, mask=mask)
         #decoded, lengths = torch_utils.pad_packed_sequence(out, batch_first=True, padding_value=0)
         
         # return decoded result
-        return(decoded)  
+        return((decoded_mu, decoded_scale))  
 
 
     def kl_loss_latent(self):
@@ -274,20 +250,22 @@ class SMAVRA(nn.Module):
         kld = torch.sum(kld_element).mul_(-0.5)
         return(kld)
     
-    def reconstruction_loss(self, x, decoded, mask=None):
+    def reconstruction_loss(self, decoded, x, mask=None):
         """Reconstruction loss
         
         Arguments:
             x {tensor} -- input sequence
             decoded {tensor} -- decoded sequence
         """
-        if self.mode == 'dynamic':
-            loss = self.loss_fn(decoded, x, mask)
+        if self.reconstruction_loss_function == 'MaskedMSELoss':
+            loss = self.loss_fn(decoded[0], x, mask)
+        elif self.reconstruction_loss_function == 'MSELoss':
+            loss = self.loss_fn(decoded[0], x)
         else:
-            loss = self.loss_fn(decoded, x)
+            loss = self.loss_fn(decoded[0], decoded[1], x)
         return(loss)
 
-    def compute_loss(self, x, decoded, mask=None):
+    def compute_loss(self, decoded, x, mask=None):
         """Reconstruction loss
         
         Arguments:
@@ -302,7 +280,7 @@ class SMAVRA(nn.Module):
         
         kld_latent = self.kl_loss_latent()
         kld_attention = self.kl_loss_attention(mask=mask) if self.use_variational_attention else 0
-        reconstruction = self.reconstruction_loss(x, decoded, mask=mask)
+        reconstruction = self.reconstruction_loss(decoded, x, mask=mask)
 
         return(reconstruction, kld_latent, kld_attention)
 

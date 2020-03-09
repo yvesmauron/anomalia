@@ -107,7 +107,8 @@ if __name__ == "__main__":
         'cuda': USE_CUDA,
         'mode':'static',
         'rnn_type':'LSTM',
-        'use_variational_attention':True
+        'use_variational_attention':True,
+        'use_proba_output':True
     }
 
     smavra = SMAVRA(**smarva_input_params)
@@ -159,7 +160,7 @@ if __name__ == "__main__":
         kld_annealing_max = 0.6,
         kld_annealing_intervals = [15, 25, 5],
         kld_latent_loss_weight=.6,
-        kld_attention_loss_weight=.3
+        kld_attention_loss_weight=.1
     )
     # start run
     logger.end_run()
