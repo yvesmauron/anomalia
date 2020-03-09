@@ -131,6 +131,10 @@ if __name__ == "__main__":
     else:
         logger = AzureLogger(ws, EXPERIMENT_NAME, output_dir)
     
+    # --------------------------------------------------------
+    # log input values for lstm
+    for key, value in smarva_input_params.items():
+        logger.log(key, str(value))
 
     # --------------------------------------------------------
     # define optimizer
