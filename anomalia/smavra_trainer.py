@@ -47,7 +47,7 @@ class SmavraTrainer(Trainer):
         clip = True, 
         max_grad_norm=5,
         kld_annealing_start_epoch = 0,
-        kld_annealing_max = 0.6,
+        kld_annealing_max = 0.8,
         kld_annealing_intervals = [15, 30, 5],
         kld_latent_loss_weight=.6,
         kld_attention_loss_weight=.3

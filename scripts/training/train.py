@@ -47,7 +47,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size", 
     help="The batch size that should be used to train the model",
-    default=128
+    default=64
 )
 
 # get arguments
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         dataset=dataset, 
         optimizer=optimizer, 
         logger=logger,
-        checkpoint_interval=10
+        checkpoint_interval=100
     )
 
     # --------------------------------------------------------
@@ -160,7 +160,7 @@ if __name__ == "__main__":
         kld_annealing_max = 0.6,
         kld_annealing_intervals = [15, 25, 5],
         kld_latent_loss_weight=.6,
-        kld_attention_loss_weight=.1
+        kld_attention_loss_weight=.01
     )
     # start run
     logger.end_run()

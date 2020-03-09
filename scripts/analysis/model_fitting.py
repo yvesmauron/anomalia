@@ -24,12 +24,12 @@ import mlflow.pytorch
 
 test_mode = False
 
-run_id = '52a8cc5c398148989cb0584d1de67403'
+run_id = 'e565c73d687a416b9fb82ce84c423c43'
 mlflow.set_experiment('SMARVA')
 
 # ------------------------------------
 # get checkpoints from directory
-training_run = './models/20200228_154043/'
+training_run = './models/20200309_213411/'
 ordered_checkpoint_list = sorted(glob.glob(training_run + '*.pt'), key=os.path.getmtime)
 
 with open('order.txt', 'w') as filehandle:
@@ -78,9 +78,9 @@ for epoch in range(len(ordered_checkpoint_list)):
 
     with torch.no_grad():
         preds = smavra(sample)
-        recon_loss, _, _ = smavra.compute_loss(sample, preds)
+        recon_loss, _, _ = smavra.compute_loss(preds, sample)
         rec_loss = recon_loss.item()
-        preds = tensor_to_data_frame(preds, epoch, device, "Predictions")
+        preds = tensor_to_data_frame(preds[0], epoch, device, "Predictions")
         true = tensor_to_data_frame(sample, epoch, device, "True")
         plot_data = true.append(preds)
         plot_data =pd.melt(plot_data, id_vars=['Index', 'Type','Epoch'], value_vars=['MaskPressure', 'RespFlow', 'DeliveredVolume'])
