@@ -71,4 +71,13 @@ As azure services can be used, there is some additional configuration necessary,
 
 ## Running experiments on Azure
 
+You can deploy an ML Workspace either by clicking this button; and filling out the parameters:
+
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmaurony%2Fts-vrae%2Fmaster%2Fazuredeploy.json)
+
+or, if you have installed the azure cli, you can deploy the resources using the following two commands:
+
+```{bash}
+az login
+az deployment group create  --resource-group <your-resource-group> --template-file ./azuredeploy.json
+```

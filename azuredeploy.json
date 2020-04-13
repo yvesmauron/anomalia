@@ -48,11 +48,11 @@
     }
   },
   "variables": {
-    "storageAccountName": "[concat('sa',uniqueString(resourceGroup().id))]",
+    "storageAccountName": "[concat('sa',parameters('workspaceName'))]",
     "storageAccountType": "Standard_LRS",
-    "keyVaultName": "[concat('kv',uniqueString(resourceGroup().id))]",
+    "keyVaultName": "[concat('kv',parameters('workspaceName'))]",
     "tenantId": "[subscription().tenantId]",
-    "applicationInsightsName": "[concat('ai',uniqueString(resourceGroup().id))]"
+    "applicationInsightsName": "[concat('ai',parameters('workspaceName'))]"
   },
   "resources": [
     {
