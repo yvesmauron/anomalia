@@ -105,7 +105,7 @@ result <- foreach(
   colnames(signal_data) <- paste(colnames(signal_data), "DATA", sep = "_")
   # combine signal time and signal data and record source file information
   signal <- cbind(
-    imeStamp = signal_ts,
+    TimeStamp = signal_ts,
     signal_time,
     signal_data,
     file_name,

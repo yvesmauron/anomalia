@@ -48,7 +48,7 @@ parser.add_argument(
 parser.add_argument(
     "--classifcation_date", 
     help="The folder where the respiration files are saved",
-    default=20200219
+    default=datetime.now().strftime('%Y%m%d')
 )
 
 parser.add_argument(

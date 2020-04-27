@@ -68,7 +68,7 @@ args = parser.parse_args()
 # --------------------------------------------------------
 # set globals
 TEST_MODE = False
-EXPERIMENT_NAME = 'SMAVRA'
+EXPERIMENT_NAME = 'SMAVRA_IDLE'
 USE_CUDA = True
 
 if __name__ == "__main__":
@@ -107,8 +107,8 @@ if __name__ == "__main__":
         'cuda': USE_CUDA,
         'mode':'static',
         'rnn_type':'LSTM',
-        'use_variational_attention':True,
-        'use_proba_output':True
+        'use_variational_attention':False,
+        'use_proba_output':False
     }
 
     smavra = SMAVRA(**smarva_input_params)
@@ -133,6 +133,7 @@ if __name__ == "__main__":
     
     # --------------------------------------------------------
     # log input values for lstm
+    logger.start_run()
     for key, value in smarva_input_params.items():
         logger.log(key, str(value))
 
@@ -153,7 +154,7 @@ if __name__ == "__main__":
 
     # --------------------------------------------------------
     # Start run including logging
-    logger.start_run()
+
     logger.log('lr', lr) # think about a better way to do this
     trainer.fit(
         n_epochs=n_epochs, 

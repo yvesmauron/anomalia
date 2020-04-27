@@ -84,7 +84,9 @@ def get_id_bounds(values, default_value):
     # find the maximum difference (maximum ids between default values)
     split = (diff == diff.max()).nonzero()[0,0]
     # return start, end ids
-    return default_value_idx[split] + 1, default_value_idx[split + 1]
+    start = default_value_idx[split] + 1 if split != 0 and diff.max() != 1 else 0
+    end = default_value_idx[split + 1] if split != 0 and diff.max() != 1 else default_value_idx[0]
+    return start, end
 
 
 def padding_tensor(sequences, max_length=1000000):
