@@ -1,0 +1,35 @@
+{
+  "name": "resmed-edf",
+  "event_time_column":"TimeStamp",
+  "grouping_column": "file_name",
+  "time_columns": [
+    {
+      "name": "TimeStamp",
+      "data_type": "timestamp",
+      "format_string": "%Y-%m-%d %H:%M:%S.%f",
+      "order_col": 1
+    }
+  ],
+  "categorical_columns": [
+    {
+      "name": "StationName",
+      "data_type": "string"
+    }
+  ],
+  "one_hot_columns": [],
+  "numerical_columns": [
+    {
+      "name": "MASK_PRESS_DATA",
+      "data_type": "float"
+    },
+    {
+      "name": "RESP_FLOW_DATA",
+      "data_type": "float"
+    },
+    {
+      "name": "DELIVERED_VOLUME_DATA",
+      "data_type": "float"
+    }
+  ],
+  "stations":{}
+}

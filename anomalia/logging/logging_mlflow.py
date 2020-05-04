@@ -42,6 +42,15 @@ class MLFlowLogger(MLLogger):
             mlflow.log_param(key, value)
         else:
             mlflow.log_metric(key, value, step)
+    
+    def log_artifact(self, local_path, artifact_path):
+        """log artifacts
+
+        Arguments:
+            local_path {strinf} -- local path of artifact
+            artifact_path {string} -- artifactpath
+        """
+        mlflow.log_artifact(local_path, artifact_path)
 
     def save_model(self, model, flavor='pytorch'):
         """Save trained model  

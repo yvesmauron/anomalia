@@ -22,7 +22,7 @@ import logging
 import logging.config
 # dev
 import matplotlib.pyplot as plt
-from anomalia.resmed_preprocess import *
+from anomalia.resmed.preprocess import *
 
 # ------------------------------------------------------------------------
 # initialize logger

@@ -2,6 +2,7 @@
 import os
 import sys
 import argparse
+import json
 # add working directory to python path for later imports
 sys.path.append(os.getcwd())
 # deep learning libraries
@@ -19,7 +20,7 @@ from azureml.core import Workspace, Dataset
 # ------------------------------------------------------------------------
 # Parse arguments
 parser = argparse.ArgumentParser(
-    description='create train and test set for lstm'
+    description='Train SMAVRA'
 )
 
 # get arguments
@@ -45,6 +46,20 @@ parser.add_argument(
 
 # get arguments
 parser.add_argument(
+    "--source_dir", 
+    help="The batch size that should be used to train the model",
+    default="data/resmed/staging/BBett_idle/"
+)
+
+# get arguments
+parser.add_argument(
+    "--data_config", 
+    help="The batch size that should be used to train the model",
+    default="config/resmed.json"
+)
+
+# get arguments
+parser.add_argument(
     "--batch_size", 
     help="The batch size that should be used to train the model",
     default=64
@@ -54,7 +69,7 @@ parser.add_argument(
 parser.add_argument(
     "--n_epochs", 
     help="The number of epochs to train the neural network",
-    default=1500
+    default=1000
 )
 
 parser.add_argument(
@@ -75,6 +90,8 @@ if __name__ == "__main__":
 
     ws_config_path = str(args.ws_config)
     batch_size = int(args.batch_size)
+    source_dir = str(args.source_dir)
+    data_config = str(args.data_config)
     n_epochs = int(args.n_epochs)
     ds_name = str(args.ds_name)
     output_dir = str(args.output_dir)
@@ -120,7 +137,7 @@ if __name__ == "__main__":
     # define dataset
 
     if not TEST_MODE:
-        dataset = ResmedDatasetEpoch(train_paths[0], batch_size)
+        dataset = ResmedDatasetEpoch(source_dir, data_config, batch_size)
     else:
         dataset = TestDataset(200, 200)
 
@@ -167,5 +184,12 @@ if __name__ == "__main__":
         kld_latent_loss_weight=.6,
         kld_attention_loss_weight=.01
     )
-    # start run
+    
+    # log important artifacsts, that are used for inference
+    with open("config/data_config.json", "w") as f:
+        json.dump(dataset.get_train_config(), f, indent=4)
+
+    logger.log_artifact("config/data_config.json", "config")
+    logger.log_artifact("config/resmed.json", "config")
+
     logger.end_run()

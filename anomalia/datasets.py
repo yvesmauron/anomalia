@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import os
 import logging
 import logging.config
+from anomalia.resmed.preprocess import *
 # custom libraries
 
 # onehot encoding
@@ -35,7 +36,17 @@ logger = logging.getLogger('anomalia')
 class ResmedDatasetEpoch(Dataset):
     """Creates a dataset for resmed streaming data
     """
-    def __init__(self, file_name, batch_size, transform=None, device='cuda', means=None, stds=None):
+    def __init__(
+            self,
+            batch_size,
+            respiration_data=None,
+            source_dir=None,
+            data_config=None,
+            transform=None,
+            device='cuda',
+            means=None,
+            stds=None
+        ):
         """Initialize Resmed Dataset
         
         Arguments:
@@ -47,13 +58,20 @@ class ResmedDatasetEpoch(Dataset):
             transform {string} -- which transformation to use (default: {None})
         """
         super().__init__()
-        self.respiration_data = torch.load(file_name)
+        self.source_dir = source_dir
+        self.data_config = data_config
+        
+        if respiration_data is None:
+            self.respiration_data, _ = read_data(self.source_dir, self.data_config) 
+        else:
+            self.respiration_data = respiration_data
+        
         self.batch_size = batch_size
         self.transform = transform
         self.device = device
 
         # cut length that it matches with batch_size
-        self.respiration_data = torch.stack(self.respiration_data, dim=0)
+        self.respiration_data = torch.cat(self.respiration_data)
         self.num_samples = self.respiration_data.shape[0]
         self.num_samples = (self.num_samples // batch_size) * batch_size
         self.respiration_data = self.respiration_data[:self.num_samples, :, :3]
@@ -75,6 +93,14 @@ class ResmedDatasetEpoch(Dataset):
     def backtransform(self, x):
         return (x * (self.stds * 2)) + self.means
 
+    def get_train_config(self):
+        config = {
+            "dataset":self.source_dir,
+            "data_config":self.data_config,
+            "means":self.means.tolist(),
+            "stds":self.stds.tolist()
+        }
+        return config
 
 
 class TestDataset(Dataset):
