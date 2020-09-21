@@ -1,23 +1,26 @@
-# general imports
-import os
-import sys
-sys.path.append(os.getcwd())
-
-import pandas as pd
-import glob
-import shutil
-import numpy as np
-# logging
-import logging
-import logging.config
-# atemreich imports
-import json
-from tqdm import tqdm
-import torch
-
+from .. import utils
+import pyarrow.parquet as pq
+from pathlib import Path
 from sklearn.model_selection import train_test_split
+import torch
+from tqdm import tqdm
+import json
+import logging.config
+import logging
+import numpy as np
+import shutil
+import glob
+import pandas as pd
+import sys
+import os
 
-from anomalia import utils 
+
+# general imports
+
+
+# logging
+# atemreich imports
+
 
 # ------------------------------------------------------------------------
 # initialize logger
@@ -28,16 +31,63 @@ logging.config.fileConfig(
 # create logger
 logger = logging.getLogger('anomalia')
 
+
+def train_data(
+    train_configs="data/normal",
+    data_dir="data/resmed/staging/20200914",
+    seq_len=750
+):
+
+    configs = [p for p in Path(train_configs).iterdir()]
+
+    tensor_list = []
+
+    for config in configs:
+        # read configuration file
+        with open(config, "r") as f:
+            config = json.load(f)
+        print(config["data_file"])
+        # create parquet table
+        df = pq.read_table(
+            os.path.join(data_dir, os.path.basename(config["data_file"]))
+        ).to_pandas()
+
+        # get normal range from config
+        if config["range"]["from"] is not None and config["range"]["to"] is not None:
+            start_range = float(config["range"]["from"] * 60)
+            end_range = float(config["range"]["to"] * 60)
+
+            # filter data frame
+            df = df[(df.time_offset >= start_range)
+                    & (df.time_offset <= end_range)]
+
+            # get tensor
+            train_tensor = torch.Tensor(df.iloc[:, :3].values)
+            # dims
+            dims = train_tensor.shape
+            # n sequences
+            n_seq = dims[0] // seq_len
+            # crop train tensor to match
+            train_tensor = train_tensor[:(n_seq * seq_len), :]
+            # reshape tensor
+            train_tensor = train_tensor.view(n_seq, seq_len, dims[1])
+
+            tensor_list.append(train_tensor)
+
+    return torch.cat(tensor_list)
+
+
 def to_categorical(df, col):
     # just do ignore warning...
     if df[col].dtype.name != 'category':
-         df.loc[:, col] = df[col].astype('category')
+        df.loc[:, col] = df[col].astype('category')
     df.loc[:, col] = df[col].cat.codes.astype("int16")
     df.loc[:, col] -= df[col].min()
     return df
 
+
 def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
-    
+
     logger.info('Reading configuration file')
     with open(data_config, 'r') as f:
         config = json.load(f)
@@ -56,7 +106,7 @@ def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
     sort_columns = grouping_column + event_time_column
     # all relevant columns
     all_columns = set(
-        train_columns + 
+        train_columns +
         one_hot_columns +
         categorical_columns +
         time_columns +
@@ -64,18 +114,18 @@ def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
 
     # check if grouping and event time colums exist
     if grouping_column[0] not in all_columns:
-        # columns are not correct 
+        # columns are not correct
         logger.error("Grouping column specified in {} does not exist in source files.".format(
             data_config)
         )
-        raise AttributeError      
+        raise AttributeError
 
     if event_time_column[0] not in all_columns:
-        # columns are not correct 
+        # columns are not correct
         logger.error("Event time column specified in {} does not exist in source files.".format(
             data_config)
         )
-        raise AttributeError      
+        raise AttributeError
     # ---------------------------------------------------------------------------
     # create additional columns, to be automated
     # get type from filename
@@ -85,7 +135,7 @@ def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
 
     # validate columns
     if not set(all_columns).issubset(raw_df.columns):
-        # columns are not correct 
+        # columns are not correct
         logger.error("Column specified in {} do not exist in source files.".format(
             data_config)
         )
@@ -98,9 +148,11 @@ def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
 
     # get dummy variables for the station
     if len(categorical_columns) > 0:
-        logger.info('Creating one hot encoded variables from categorical variables.')
+        logger.info(
+            'Creating one hot encoded variables from categorical variables.')
         for col in config['categorical_columns']:
-            logger.info(f"Preparing catecorical column: {col['name']} for embedding")
+            logger.info(
+                f"Preparing catecorical column: {col['name']} for embedding")
             train_df = to_categorical(train_df, col['name'])
 
     # convert time column to timestamp
@@ -110,7 +162,7 @@ def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
         format="%Y-%m-%d %H:%M:%S.%f"
     )
 
-    # process 
+    # process
     logger.info('Sorting dataset and creating groups')
     train_df = \
         train_df \
@@ -120,7 +172,7 @@ def preprocess_resmed_from_config(raw_df, data_config, grouped_output=True):
         train_df = \
             train_df \
             .groupby(grouping_column)
-    
+
     return train_df, numerical_columns, one_hot_columns
 
 
@@ -149,11 +201,11 @@ def read_data(source_dir, data_config, seq_len=750, scoring=False):
                 pbar.set_postfix(file=f)
                 raw_df.append(pd.read_csv(f))
                 pbar.update(1)
-                
+
         raw_df = pd.concat(raw_df, ignore_index=True)
     else:
         raw_df = pd.read_csv(file_list[0])
-    
+
     # -------------------------------------
     # preprocess df
     train_df, numerical_columns, one_hot_columns = preprocess_resmed_from_config(
@@ -169,32 +221,34 @@ def read_data(source_dir, data_config, seq_len=750, scoring=False):
         for name, group in train_df:
             pbar.set_postfix(file=name)
             # train tensor
-            train_tensor = torch.Tensor(group[numerical_columns + one_hot_columns].to_numpy())
+            train_tensor = torch.Tensor(
+                group[numerical_columns + one_hot_columns].to_numpy())
             # get all values that are not default ones
             start, end = utils.get_id_bounds(train_tensor[:, 0], -3276.8000)
             # subset tensor using default_value_idx and split
             train_tensor_croped = train_tensor[start:end]
-            # dimensions 
+            # dimensions
             # [samples, featues]
             dims = train_tensor_croped.shape
             # n sequences
             n_seq = dims[0] // seq_len
             # crop train tensor to match
-            train_tensor_croped = train_tensor_croped[:(n_seq * seq_len),:]
+            train_tensor_croped = train_tensor_croped[:(n_seq * seq_len), :]
             # reshape tensor
-            train_tensor_reshaped = train_tensor_croped.view(n_seq, seq_len, dims[1])
+            train_tensor_reshaped = train_tensor_croped.view(
+                n_seq, seq_len, dims[1])
             # add to tensor list
             tensor_list.append(train_tensor_reshaped)
             # crop df for scoring
             if scoring:
                 croped_df = group.iloc[int(start):int(end), :]
-                croped_df = group.iloc[:(n_seq * seq_len),:]
+                croped_df = group.iloc[:(n_seq * seq_len), :]
                 if train_df.ngroups > 1:
                     train.append(croped_df)
                 else:
                     train = croped_df
             pbar.update(1)
-    
+
     if train_df.ngroups > 1 and scoring:
         train = pd.concat(train, ignore_index=True)
 

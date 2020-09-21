@@ -36,50 +36,54 @@ logger = logging.getLogger('anomalia')
 class ResmedDatasetEpoch(Dataset):
     """Creates a dataset for resmed streaming data
     """
+
     def __init__(
-            self,
-            batch_size,
-            respiration_data=None,
-            source_dir=None,
-            data_config=None,
-            transform=None,
-            device='cuda',
-            means=None,
-            stds=None
-        ):
+        self,
+        batch_size,
+        respiration_data=None,
+        source_dir=None,
+        data_config=None,
+        transform=None,
+        device='cuda',
+        means=None,
+        stds=None
+    ):
         """Initialize Resmed Dataset
-        
+
         Arguments:
             Dataset {torch.utils.data.Dataset} -- class dataset
             file_name {string} -- where the data should be loaded from
             batch_size {int} -- what batch size to use
-        
+
         Keyword Arguments:
             transform {string} -- which transformation to use (default: {None})
         """
         super().__init__()
         self.source_dir = source_dir
         self.data_config = data_config
-        
+
         if respiration_data is None:
-            self.respiration_data, _ = read_data(self.source_dir, self.data_config) 
+            self.respiration_data = train_data()
         else:
             self.respiration_data = respiration_data
-        
+
         self.batch_size = batch_size
         self.transform = transform
         self.device = device
 
         # cut length that it matches with batch_size
-        self.respiration_data = torch.cat(self.respiration_data)
+        #self.respiration_data = torch.cat(self.respiration_data)
         self.num_samples = self.respiration_data.shape[0]
         self.num_samples = (self.num_samples // batch_size) * batch_size
         self.respiration_data = self.respiration_data[:self.num_samples, :, :3]
 
-        self.means = self.respiration_data.view(-1,3).mean(axis=0) if means is None else means
-        self.stds = self.respiration_data.view(-1,3).std(axis=0) if stds is None else stds
+        self.means = self.respiration_data.view(-1,
+                                                3).mean(axis=0) if means is None else means
+        self.stds = self.respiration_data.view(-1,
+                                               3).std(axis=0) if stds is None else stds
 
-        self.respiration_data = (self.respiration_data - self.means) / (self.stds * 2)
+        self.respiration_data = (
+            self.respiration_data - self.means) / (self.stds * 2)
 
     def __len__(self):
         return(self.num_samples)
@@ -89,16 +93,16 @@ class ResmedDatasetEpoch(Dataset):
             return(self.respiration_data[idx].cuda())
         else:
             return(self.respiration_data[idx])
-    
+
     def backtransform(self, x):
         return (x * (self.stds * 2)) + self.means
 
     def get_train_config(self):
         config = {
-            "dataset":self.source_dir,
-            "data_config":self.data_config,
-            "means":self.means.tolist(),
-            "stds":self.stds.tolist()
+            "dataset": self.source_dir,
+            "data_config": self.data_config,
+            "means": self.means.tolist(),
+            "stds": self.stds.tolist()
         }
         return config
 
@@ -106,14 +110,15 @@ class ResmedDatasetEpoch(Dataset):
 class TestDataset(Dataset):
     """Creates a dataset for testing
     """
+
     def __init__(self, batch_count, seq_len, device='cuda'):
         """Initialize Resmed Dataset
-        
+
         Arguments:
             Dataset {torch.utils.data.Dataset} -- class dataset
             file_name {string} -- where the data should be loaded from
             batch_size {int} -- what batch size to use
-        
+
         Keyword Arguments:
             transform {string} -- which transformation to use (default: {None})
         """
@@ -124,7 +129,8 @@ class TestDataset(Dataset):
         self.device = device
 
         # cut length that it matches with batch_count
-        sin_data = torch.sin(torch.arange(0, self.measure_points, 0.1))[:self.measure_points]
+        sin_data = torch.sin(torch.arange(0, self.measure_points, 0.1))[
+            :self.measure_points]
         self.batched_sin = sin_data.view(self.batch_count, self.seq_len, -1)
 
     def __len__(self):
@@ -137,22 +143,20 @@ class TestDataset(Dataset):
             return(self.batched_sin[idx])
 
 
-
-
 #test_dataset = ResmedDatasetEpoch('data/resmed/train/train_resmed.pt', 64)
 #
-#for i, tensor in enumerate(test_dataset):
+# for i, tensor in enumerate(test_dataset):
 #    print('id: {}; tensor.shape: {}'.format(i, tensor.shape))
 #
 #
 #
 #test = [1,2,3,4,5]
 #len(test) // 2
-#test[:2*2]
+# test[:2*2]
 #
 #test = ResmedDatasetSimple('data/resmed/train/train_resmed.pt', 64)
 #
-#for i in enumerate(test):
+# for i in enumerate(test):
 #    print(i)
 #    input("Press Enter to continue...")
 #
@@ -162,14 +166,14 @@ class TestDataset(Dataset):
 #lengths = [_.size(0) for _ in breath_data]
 #padded = torch.nn.utils.rnn.pack_padded_sequence(padded, lengths=lengths, batch_first=True, enforce_sorted=False)
 #
-#breath_data[1].size(0)
+# breath_data[1].size(0)
 #test = torch.load('data/resmed/train/train_resmed.pt')[0:10]
 #
 #
 #test = test[:10]
 #
 #
-#test =  [
+# test =  [
 #    torch.tensor([[
 #        [
 #            1,2,3
@@ -194,7 +198,7 @@ class TestDataset(Dataset):
 #            2,3,4
 #        ]
 #    ]]),
-#]
+# ]
 #
 #torch.cat(test, dim=0)
 #
@@ -206,11 +210,11 @@ class TestDataset(Dataset):
 #
 #lens = [s.shape[0] for s in test]
 #
-#plt.hist(lengths)
-#plt.show()
+# plt.hist(lengths)
+# plt.show()
 #
-#plt.boxplot(lens)
-#plt.show()
+# plt.boxplot(lens)
+# plt.show()
 #
 #
 #from torch import nn
@@ -218,22 +222,22 @@ class TestDataset(Dataset):
 #x_seq = [torch.tensor([5, 18, 29]), torch.tensor([32, 100]), torch.tensor([699, 6, 9, 17])]
 #x_padded = pad_sequence(x_seq, batch_first=True, padding_value=0)
 #
-#pack_padded_sequence(x_padded)
+# pack_padded_sequence(x_padded)
 #
 #
 #
 #
-#class ResmedDataset(Dataset):
+# class ResmedDataset(Dataset):
 #    """Creates a dataset for resmed streaming data
 #    """
 #    def __init__(self, file_name, batch_size, max_length=1000000, transform=None, device='cuda'):
 #        """Initialize Resmed Dataset
-#        
+#
 #        Arguments:
 #            Dataset {torch.utils.data.Dataset} -- class dataset
 #            file_name {string} -- where the data should be loaded from
 #            batch_size {int} -- what batch size to use
-#        
+#
 #        Keyword Arguments:
 #            transform {string} -- which transformation to use (default: {None})
 #        """
@@ -266,13 +270,13 @@ class TestDataset(Dataset):
 #
 #
 #
-#file_name='data/resmed/train/train_resmed.pt'
+# file_name='data/resmed/train/train_resmed.pt'
 #batch_size = 64
 #
 #respiration_data = torch.load(file_name)
 #batch_size = batch_size
 #
-## cut length that it matches with batch_size
+# cut length that it matches with batch_size
 #
 #respiration_data = torch.cat(respiration_data, dim=0)
 #num_samples = respiration_data.shape[0]

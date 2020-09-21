@@ -98,7 +98,7 @@ if __name__ == '__main__':
     experiment_folder = str(args.experiment_folder)
     env_file = str(args.env_file)
     compute_node = str(args.compute_node)
-    ompute_node_name = compute_node.replace('_', '')
+    compute_node_name = compute_node.replace('_', '')
     batch_size = int(args.batch_size)
     n_epochs = int(args.n_epochs)
     ds_name = str(args.ds_name)
@@ -146,11 +146,11 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------------
     # Compute target
 
-    if ompute_node_name is not 'local':
+    if compute_node_name is not 'local':
         try:
             # check if ComputeTarget is valid here, as it seems to be abstract class
             # see: https://docs.microsoft.com/en-us/azure/machine-learning/how-to-train-pytorch
-            compute_target = ComputeTarget(workspace=ws, name=ompute_node_name)
+            compute_target = ComputeTarget(workspace=ws, name=compute_node_name)
             logger.info('Found existing compute target.')
         except ComputeTargetException:
             logger.info('Creating a new compute target...')
@@ -160,7 +160,7 @@ if __name__ == '__main__':
             )
 
             # create the cluster
-            compute_target = ComputeTarget.create(ws, ompute_node_name, compute_config)
+            compute_target = ComputeTarget.create(ws, compute_node_name, compute_config)
 
             compute_target.wait_for_completion(show_output=True)
     else:

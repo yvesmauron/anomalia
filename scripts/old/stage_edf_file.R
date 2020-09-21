@@ -26,7 +26,7 @@ stations <- list.dirs(
   recursive = F
 )
 
-station <- "BBett"
+station <- "Bianca"
 
 if (!(station %in% stations))
   stop("Station is not valid")
