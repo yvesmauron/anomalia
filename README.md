@@ -1,83 +1,57 @@
-# Anomaly detection algorithms for time series
+anomalia
+==============================
 
-This repository aims at collecting different approaches of detecting anomalies in time-series; both univariate and multi-variate. Experiments can run either on your local computer/server or on azure machine learning services. 
+Anomaly Detection for Sequence Data
 
-## Setup
+Project Organization
+------------
 
-### Installation
+    ├── LICENSE
+    ├── Makefile           <- Makefile with commands like `make data` or `make train`
+    ├── README.md          <- The top-level README for developers using this project.
+    ├── data
+    │   ├── external       <- Data from third party sources.
+    │   ├── interim        <- Intermediate data that has been transformed.
+    │   ├── processed      <- The final, canonical data sets for modeling.
+    │   └── raw            <- The original, immutable data dump.
+    │
+    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    │
+    ├── models             <- Trained and serialized models, model predictions, or model summaries
+    │
+    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
+    │                         the creator's initials, and a short `-` delimited description, e.g.
+    │                         `1.0-jqp-initial-data-exploration`.
+    │
+    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    │
+    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
+    │   └── figures        <- Generated graphics and figures to be used in reporting
+    │
+    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
+    │                         generated with `pip freeze > requirements.txt`
+    │
+    ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
+    ├── src                <- Source code for use in this project.
+    │   ├── __init__.py    <- Makes src a Python module
+    │   │
+    │   ├── data           <- Scripts to download or generate data
+    │   │   └── make_dataset.py
+    │   │
+    │   ├── features       <- Scripts to turn raw data into features for modeling
+    │   │   └── build_features.py
+    │   │
+    │   ├── models         <- Scripts to train models and then use trained models to make
+    │   │   │                 predictions
+    │   │   ├── predict_model.py
+    │   │   └── train_model.py
+    │   │
+    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
+    │       └── visualize.py
+    │
+    └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
-The current implementation uses conda for package management; which can be installed as follows (for Windows or more information about the installation process, please check [minicondas documentation site](https://docs.conda.io/en/latest/miniconda.html)):
 
-```shell
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-chmod +x Miniconda3-latest-Linux-x86_64.sh
-./Miniconda3-latest-Linux-x86_64.sh
-```
+--------
 
-Thereafter you can install all dependencies used for this project with the follwoing conda command:
-
-```shell
-conda env create -f environment.yml
-```
-
-If everything went fine, you should be now able to run and/or develop experiments.
-
-### Configuration
-
-As azure services can be used, there is some additional configuration necessary, to e.g. the azure machine learning workspace, service principle etc. At the moment, 4 configurtion files are used in the code; that contain all the necessary information to use this services. If you want to use Azure to train your models, you need to create a `./config` directory and place the following files in this folder.
-
-`ws_config.json`; which is workspace configuration of the azure machine learning services workspace (this can be exported from the Azure portal directly and has the follwoing format):
-
-```json
-{
-    "subscription_id": "YOUR_SUBSCRIPTION_ID",
-    "resource_group": "YOUR_RESOURCE_GROUP",
-    "workspace_name": "YOUR_WORKSPACE_NAME"
-}
-```
-
-`sp_config.json`; which holds information of the service principle so that the application can access the data lake storage:
-
-```json
-{
-    "tenant_id": "YOUR_TENANT_ID",
-    "adls_accountname": "YOUR_ADLS_ACCOUNT_NAME",
-    "adls_client_id": "YOUR_ADLS_CLIENT_ID",
-    "adls_client_secret": "YOUR_ADLS_CLIENT_SECRET"
-}
-```
-
-*Optionally*, you can also define `ds_config.json` which lets you directly create file datasets within the azure machine learning servcies workspace from a folder stored in the azure data lake storage. The structure to
-
-```json
-{
-    "data_store_name":"DATA_STORE_NAME",
-    "datasets":[
-        {
-            "name":"NAME_OF_THE_DATASET",
-            "description":"DESCRIPTION",
-            "path":"PATH_WITHIN_THE_ADLS"
-        },
-        ...
-    ]
-}
-```
-
-> Note: if you are registering the dataset within azure machine learning services, you can then also connect to this dataset ML designer.
-
-## Training Process
-
-![model_fitting](img/animated.gif)
-
-## Running experiments on Azure
-
-You can deploy an ML Workspace either by clicking this button; and filling out the parameters:
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmaurony%2Fts-vrae%2Fmaster%2Fazuredeploy.json)
-
-or, if you have installed the azure cli, you can deploy the resources using the following two commands:
-
-```{bash}
-az login
-az deployment group create  --resource-group <your-resource-group> --template-file ./azuredeploy.json
-```
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
