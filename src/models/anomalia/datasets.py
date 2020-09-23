@@ -11,7 +11,7 @@ class ResmedDatasetEpoch(Dataset):
     def __init__(
         self,
         batch_size: int,
-        train_data: str,
+        data: object,
         transform: list = None,
         device: str = 'cuda',
         means: list = None,
@@ -21,14 +21,19 @@ class ResmedDatasetEpoch(Dataset):
 
         Args:
             batch_size (int): batch size
-            train_data (str): location of training data
+            data (object): location of training data or tensor itself.
             transform (list, optional): transforms; not used yet. Defaults to None.
             device (str, optional): device. Defaults to 'cuda'.
             means (list, optional): means used during preprocessing. Defaults to None.
             stds (list, optional): stds used during preprocessing. Defaults to None.
         """
         super().__init__()
-        self.respiration_data = torch.load(train_data)
+        if type(data) is torch.Tensor:
+            self.respiration_data = data
+        elif type(data) is str:
+            self.respiration_data = torch.load(data)
+        else:
+            raise ValueError
 
         self.batch_size = batch_size
         self.transform = transform

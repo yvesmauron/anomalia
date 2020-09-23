@@ -1,14 +1,6 @@
 src.models.anomalia package
 ===========================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   src.models.anomalia.logging
-
 Submodules
 ----------
 

@@ -4,10 +4,11 @@ from azureml.core.run import Run
 from azureml.core import Experiment
 import torch
 
-from .logging import MLLogger
+from .base import MLTracker
 
-class AzureLogger(MLLogger):
-    """Logger class for azure
+
+class AzureTracker(MLTracker):
+    """Tracker class for azure
     """
 
     def __init__(self, workspace, experiment_name, artifact_path):

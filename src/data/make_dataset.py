@@ -7,7 +7,7 @@ from dotenv import find_dotenv, load_dotenv
 import shutil
 from tqdm import tqdm
 import json
-from src.features.build_features import process_resmed_train
+from src.features.build_features import process_resmed_train, process_resmed_score
 
 # Azure keyvault dependencies
 from azure.keyvault.secrets import SecretClient
@@ -22,10 +22,11 @@ azure_logger.setLevel(logging.WARNING)
 
 
 @click.command()
-@click.argument('input_path', type=click.Path(), default="exploration/video-analysis/normal")
-@click.argument('output_user_data_path', type=click.Path(), default="data/external/user_classification")
+@click.argument('input_user_data_path', type=click.Path(), default="exploration/video-analysis/normal")
+@click.argument('input_data_path', type=click.Path(), default="exploration/video-analysis/data")
+@click.argument('output_user_data_path', type=click.Path(), default="data/external/user_classification/normal")
 @click.argument('output_data_path', type=click.Path(), default="data/raw/resmed")
-def sync_azure_datalake(input_path, output_user_data_path, output_data_path):
+def sync_azure_datalake(input_user_data_path, input_data_path, output_user_data_path, output_data_path):
     """ Runs data processing scripts to turn raw data from (../raw) into
         cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -61,49 +62,66 @@ def sync_azure_datalake(input_path, output_user_data_path, output_data_path):
     if user_data_path.exists():
         shutil.rmtree(user_data_path)
 
-    if data_path.exists():
-        shutil.rmtree(data_path)
+    if not data_path.exists():
+        data_path.mkdir(parents=True, exist_ok=True)
 
     user_data_path.mkdir(parents=True, exist_ok=True)
-    data_path.mkdir(parents=True, exist_ok=True)
 
-    user_classifications = adlsFileSystemClient.ls(input_path)
+    user_classifications = adlsFileSystemClient.ls(input_user_data_path)
+    train_data_paths = []
 
     logger.info("downloading user classification data...")
     with tqdm(total=len(user_classifications), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
         for file_path in user_classifications:
             pbar.set_postfix(file=str(os.path.basename(file_path)))
+            dst_path = os.path.join(
+                user_data_path, os.path.basename(file_path)
+            )
             adlsFileSystemClient.get(
                 file_path,
-                os.path.join(user_data_path, os.path.basename(file_path))
+                dst_path
             )
-            pbar.update(1)
 
-    data_paths = [_ for _ in user_data_path.iterdir()]
-    logger.info("downloading train data...")
-    with tqdm(total=len(data_paths), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
-        for file_path in data_paths:
-            # load data user data
-            with open(file_path, "r") as f:
+            # check if downloaded config is valid for use training
+            with open(dst_path, "r") as f:
                 config = json.load(f)
 
-            pbar.set_postfix(file=str(os.path.basename(config["data_file"])))
-
-            # if valid, load data file
             if config["range"]["from"] is not None and config["range"]["to"] is not None:
-                adlsFileSystemClient.get(
-                    config["data_file"],
-                    os.path.join(data_path, os.path.basename(
-                        config["data_file"]))
-                )
+                train_data_paths.append(os.path.basename(config["data_file"]))
             else:
-                Path(file_path).unlink()
+                Path(dst_path).unlink()
 
             pbar.update(1)
 
-    logger.info("creating training dataset")
+    # get all data paths
+    data_paths = adlsFileSystemClient.ls(input_data_path)
+    existing_data_paths = [os.path.basename(p)
+                           for p in Path(os.path.join(output_data_path)).iterdir()
+                           ]
+
+    logger.info("downloading sensor data if not exists...")
+    with tqdm(total=len(data_paths), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+        for file_path in data_paths:
+            # set posix for info
+            pbar.set_postfix(file=str(os.path.basename(file_path)))
+
+            # only download data that we didn't download yet
+            if os.path.basename(file_path) not in existing_data_paths:
+                adlsFileSystemClient.get(
+                    config["data_file"],
+                    os.path.join(data_path, os.path.basename(file_path))
+                )
+
+            pbar.update(1)
+
+    logger.info("processing training dataset")
     process_resmed_train(
         user_data_path=user_data_path,
+        data_path=data_path
+    )
+
+    logger.info("processing scoring dataset")
+    process_resmed_score(
         data_path=data_path
     )
 

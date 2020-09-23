@@ -5,7 +5,6 @@ import pandas as pd
 import math
 # logging
 import logging
-import logging.config
 import torch
 from torch import Tensor
 # logging
@@ -13,12 +12,11 @@ from tqdm import tqdm
 
 # ------------------------------------------------------------------------
 # initialize logger
-logging.config.fileConfig(
-    os.path.join(os.getcwd(), 'config', 'logging.conf')
-)
+log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=log_fmt)
 
 # create logger
-logger = logging.getLogger('anomalia')
+logger = logging.getLogger(__file__)
 
 
 def generate_lstm_input_sequence(
@@ -31,7 +29,7 @@ def generate_lstm_input_sequence(
     Generates a tensor that corresponds an LSTM input sequence from a 
     two dimensional table (rows = samples, columns = variables)
 
-    Arguments:
+    Args:
         input_tensor (Tensor): the tensor that should be shifted
         seq_len (int): the length the tensor should be 
         window_shift (int): how much time_steps the input window should be shifted
@@ -84,7 +82,7 @@ def get_id_bounds(
     Just removing this kind of outliers in between the opertions would lead to
     wrong time series (time-gaps).
 
-    Arguments:
+    Args:
         values (Tensor): 1d torch tensor
         max (float): default value the machine is operating in
 
@@ -109,7 +107,7 @@ def get_id_bounds(
 def padding_tensor(sequences, max_length=1000000):
     """Pad sequences that are too short
 
-    Arguments:
+    Args:
         sequences (list(Tensor)): list of tensors
         max_length (int): maximum supported length of a breath
 

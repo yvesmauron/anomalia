@@ -8,22 +8,23 @@ Subpackages
    :maxdepth: 4
 
    src.models.anomalia
+   src.models.logging
 
 Submodules
 ----------
 
-src.models.predict\_model module
---------------------------------
+src.models.predict module
+-------------------------
 
-.. automodule:: src.models.predict_model
+.. automodule:: src.models.predict
    :members:
    :undoc-members:
    :show-inheritance:
 
-src.models.train\_model module
-------------------------------
+src.models.train module
+-----------------------
 
-.. automodule:: src.models.train_model
+.. automodule:: src.models.train
    :members:
    :undoc-members:
    :show-inheritance:

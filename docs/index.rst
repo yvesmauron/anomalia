@@ -9,7 +9,7 @@ anomalia documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 5
 
    getting-started
    commands

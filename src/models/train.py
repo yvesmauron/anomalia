@@ -17,8 +17,8 @@ from azureml.core import Workspace, Dataset
 # model specific
 from src.models.anomalia.smavra import SMAVRA
 from src.models.anomalia.datasets import ResmedDatasetEpoch, TestDataset
-from src.models.anomalia.logging.logging_azurml import AzureLogger
-from src.models.anomalia.logging.logging_mlflow import MLFlowLogger
+from src.models.tracking.azurml import AzureTracker
+from src.models.tracking.mlflow import MLFlowTracker
 from src.models.anomalia.smavra_trainer import SmavraTrainer
 
 # Set the logging level for all azure-* libraries
@@ -34,8 +34,8 @@ USE_CUDA = True
 
 @click.command()
 @click.option('--batch_size', type=click.INT, default=64, help="Batch size to be used.")
-@click.option('--train_data', type=click.Path(), default="data/processed/resmed/train.pt", help="Path to training data.")
-@click.option('--n_epochs', type=click.INT, default=1000, help="Numbers of epochs the model should be trained.")
+@click.option('--train_data', type=click.Path(), default="data/processed/resmed/train/train.pt", help="Path to training data.")
+@click.option('--n_epochs', type=click.INT, default=2000, help="Numbers of epochs the model should be trained.")
 @click.option('--ds_name', type=click.Path(), default="resmed_dataset", help="Dataset name in Azure Machine Leaning Services, if it is used for training.")
 @click.option('--output_dir', type=click.Path(), default="./outputs", help="Output directory to be used in Azure ML Services.")
 @click.option('--compute_node', type=click.Path(), default="local", help="Where it should be computed; not supported at the moment.")
@@ -76,19 +76,19 @@ def train_smavra(
     # define learner
     smarva_input_params = {
         'input_size': 1 if TEST_MODE else 3,
-        'hidden_size': 10 if TEST_MODE else 30,
-        'latent_size': 1 if TEST_MODE else 15,
+        'hidden_size': 10 if TEST_MODE else 64,
+        'latent_size': 1 if TEST_MODE else 4,
         # 'attention_size':1 if TEST_MODE else 3, # not supported anymore
         'output_size': 1 if TEST_MODE else 3,
         'num_layers': 1 if TEST_MODE else 2,
-        'n_heads': 1 if TEST_MODE else 3,
+        'n_heads': 1 if TEST_MODE else 2,
         'dropout': 0.25,
         'batch_first': True,
         'cuda': USE_CUDA,
         'mode': 'static',
         'rnn_type': 'LSTM',
-        'use_variational_attention': True,
-        'use_proba_output': True
+        'use_variational_attention': False,
+        'use_proba_output': False
     }
 
     smavra = SMAVRA(**smarva_input_params)
@@ -102,7 +102,7 @@ def train_smavra(
     # define dataset
     if not TEST_MODE:
         dataset = ResmedDatasetEpoch(
-            train_data=train_data,
+            data=train_data,
             device='cuda' if USE_CUDA else 'cpu',
             batch_size=batch_size
         )
@@ -112,10 +112,10 @@ def train_smavra(
     # --------------------------------------------------------
     # define logger
     if compute_node == 'local':
-        logger = MLFlowLogger(EXPERIMENT_NAME, "model",
-                              './environment.yml', ['./src/models'])
+        logger = MLFlowTracker(EXPERIMENT_NAME, "model",
+                               './environment.yml', ['./src/models'])
     else:
-        logger = AzureLogger(ws, EXPERIMENT_NAME, output_dir)
+        logger = AzureTracker(ws, EXPERIMENT_NAME, output_dir)
 
     # --------------------------------------------------------
     # log input values for lstm

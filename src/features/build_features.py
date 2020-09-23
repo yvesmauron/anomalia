@@ -14,18 +14,42 @@ import logging
 # data structures
 import numpy as np
 import torch
+from torch import Tensor
 import pandas as pd
 import pyarrow.parquet as pq
+import pyarrow as pa
 
 # Set the logging level for all azure-* libraries
 azure_logger = logging.getLogger('azure')
 azure_logger.setLevel(logging.WARNING)
 
 
+def reshape_resmed_tensor(tensor: Tensor, seq_len: int):
+    """reshape train tensor
+
+    Args:
+        tensor (Tensor): tensor to be reshaped
+        seq_len (int): target sequence length of the tensor
+
+    Returns:
+        Tensor: reshaped tensor
+    """
+    # dims
+    dims = tensor.shape
+    # n sequences
+    n_seq = dims[0] // seq_len
+    # crop train tensor to match
+    tensor = tensor[:(n_seq * seq_len), :]
+    # reshape tensor
+    tensor = tensor.view(n_seq, seq_len, dims[1])
+
+    return tensor
+
+
 def process_resmed_train(
-    user_data_path: str = "data/external/user_classification",
+    user_data_path: str = "data/external/user_classification/normal",
     data_path: str = "data/raw/resmed",
-    output_path: str = "data/processed/resmed",
+    output_path: str = "data/processed/resmed/train",
     seq_len: int = 750
 ) -> torch.Tensor:
     """generate training data using user classification config
@@ -80,20 +104,55 @@ def process_resmed_train(
 
                 # get tensor
                 train_tensor = torch.Tensor(df.iloc[:, :3].values)
-                # dims
-                dims = train_tensor.shape
-                # n sequences
-                n_seq = dims[0] // seq_len
-                # crop train tensor to match
-                train_tensor = train_tensor[:(n_seq * seq_len), :]
-                # reshape tensor
-                train_tensor = train_tensor.view(n_seq, seq_len, dims[1])
+
+                train_tensor = reshape_resmed_tensor(train_tensor, seq_len)
 
                 tensor_list.append(train_tensor)
 
             pbar.update(1)
 
     torch.save(torch.cat(tensor_list), os.path.join(output_path, "train.pt"))
+
+
+def process_resmed_score(
+    data_path: str,
+    output_path: str = "data/processed/resmed/score",
+    seq_len: int = 750
+):
+    data_paths = [p for p in Path(data_path).iterdir()]
+
+    # remove directory if exists
+    output_path = Path(output_path)
+    if output_path.exists():
+        shutil.rmtree(output_path)
+
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    with tqdm(total=len(data_paths), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+        for p in data_paths:
+
+            file_name = os.path.basename(p)
+
+            pbar.set_postfix(file=str(file_name))
+
+            # create parquet table
+            df = pq.read_table(
+                os.path.join(data_path, file_name)
+            ).to_pandas()
+
+            # get tensor
+            n_samples = df.shape[0]
+
+            n_seq = n_samples // seq_len
+            # crop train tensor to match
+            table = pa.Table.from_pandas(df.iloc[:(n_seq * seq_len), :])
+
+            pq.write_table(
+                table,
+                os.path.join(output_path, file_name)
+            )
+
+            pbar.update(1)
 
 
 def to_categorical(df: pd.DataFrame, col: str) -> pd.DataFrame:

@@ -1,10 +1,11 @@
 import mlflow
 import mlflow.pytorch
 
-from .logging import MLLogger
+from .base import MLTracker
 
-class MLFlowLogger(MLLogger):
-    """Logger for MLFlow
+
+class MLFlowTracker(MLTracker):
+    """Tracker for MLFlow
     """
 
     def __init__(self, experiment_name, artifact_path, conda_env, code_paths):
@@ -42,7 +43,7 @@ class MLFlowLogger(MLLogger):
             mlflow.log_param(key, value)
         else:
             mlflow.log_metric(key, value, step)
-    
+
     def log_artifact(self, local_path, artifact_path):
         """log artifacts
 

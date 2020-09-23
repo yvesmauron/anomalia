@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 
 
-class MLLogger(ABC):
+class MLTracker(ABC):
     """Base class for logging ml experiments
     """
     @abstractmethod
