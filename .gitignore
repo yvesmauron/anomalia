@@ -89,6 +89,6 @@ target/
 .mypy_cache/
 
 
-config/
-mlruns/
-models/
+/config/
+/mlruns/
+/models/
