@@ -139,10 +139,10 @@ def predict_smavra(
                 predictions = np.concatenate(
                     [mu_scaled, mu, epoch_mse, t_mse,  m_se], axis=1)
 
-                colnames = ["epoch_mse", "t_mse"] \
-                    + [f"{_}_se" for _ in column_order] \
-                    + [f"{_}_mu_scaled" for _ in column_order] \
-                    + [f"{_}_mu" for _ in column_order]
+                colnames = [f"{_}_mu_scaled" for _ in column_order] \
+                    + [f"{_}_mu" for _ in column_order] \
+                    + ["epoch_mse", "t_mse"] \
+                    + [f"{_}_se" for _ in column_order]
 
                 predictions = pd.DataFrame(predictions, columns=colnames)
 

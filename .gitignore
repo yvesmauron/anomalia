@@ -92,3 +92,4 @@ target/
 /config/
 /mlruns/
 /models/
+/reports/figures/

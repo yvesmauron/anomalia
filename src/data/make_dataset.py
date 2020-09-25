@@ -108,7 +108,7 @@ def sync_azure_datalake(input_user_data_path, input_data_path, output_user_data_
             # only download data that we didn't download yet
             if os.path.basename(file_path) not in existing_data_paths:
                 adlsFileSystemClient.get(
-                    config["data_file"],
+                    file_path,
                     os.path.join(data_path, os.path.basename(file_path))
                 )
 

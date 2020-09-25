@@ -87,8 +87,8 @@ def train_smavra(
         'cuda': USE_CUDA,
         'mode': 'static',
         'rnn_type': 'LSTM',
-        'use_variational_attention': False,
-        'use_proba_output': False
+        'use_variational_attention': True,
+        'use_proba_output': True
     }
 
     smavra = SMAVRA(**smarva_input_params)
