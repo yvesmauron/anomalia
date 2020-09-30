@@ -1,8 +1,9 @@
 import torch
 from torch import nn, Tensor
 import torch.nn.utils.rnn as torch_utils
-import torch.nn.functional as F
-from src.models.anomalia.layers import Encoder, Variational, MultiHeadAttention, Decoder
+from src.models.anomalia.layers import (
+    Encoder, Variational, MultiHeadAttention, Decoder
+)
 from src.models.anomalia.losses import MaskedMSELoss, InvLogProbLaplaceLoss
 
 
@@ -35,15 +36,24 @@ class SMAVRA(nn.Module):
             latent_size (int): size of latent vectors
             output_size (int): [description]
             num_layers (int): num layers for encoder/decoder
-            n_heads (int, optional): number of attention head. Defaults to 2.
+            n_heads (int, optional): number of attention head.
+                Defaults to 2.
             dropout (float, optional): dropout rate. Defaults to 0.1.
-            batch_first (bool, optional): wether batch first or not. Defaults to True.
-            cuda (bool, optional): whether to use cuda or not. Defaults to True.
-            reconstruction_loss_function (str, optional): loss for reconstruction error. Defaults to 'MSELoss'.
-            mode (str, optional): statis or dynamic. Defaults to 'dynamic'.
-            rnn_type (str, optional): type of rnn to use. Defaults to 'LSTM'.
-            use_variational_attention (bool, optional): whether to use variational attention or not. Defaults to True.
-            use_proba_output (bool, optional): whether to use probabilistic output or not. Defaults to False.
+            batch_first (bool, optional): wether batch first or not.
+                Defaults to True.
+            cuda (bool, optional): whether to use cuda or not.
+                Defaults to True.
+            reconstruction_loss_function (str, optional): loss for
+                reconstruction error. Defaults to 'MSELoss'.
+            mode (str, optional): statis or dynamic.
+                Defaults to 'dynamic'.
+            rnn_type (str, optional): type of rnn to use.
+                Defaults to 'LSTM'.
+            use_variational_attention (bool, optional): whether to use
+                variational attention or not.
+                    Defaults to True.
+            use_proba_output (bool, optional): whether to use probabilistic
+                output or not. Defaults to False.
         """
         super(SMAVRA, self).__init__()
         self.use_cuda = cuda
@@ -56,7 +66,7 @@ class SMAVRA(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.latent_size = latent_size
-        #self.attention_size = attention_size
+        # self.attention_size = attention_size
         self.output_size = output_size
         self.num_layers = num_layers
         self.n_heads = n_heads
@@ -86,9 +96,9 @@ class SMAVRA(nn.Module):
         # ----------------------------------------------------
         # 3.) Multihead self-attention
 
-        device = 'cuda:0'
-        if not self.use_cuda:
-            device = 'cpu'
+        # device = 'cuda:0'
+        # if not self.use_cuda:
+        #     device = 'cpu'
 
         self.attention = MultiHeadAttention(
             hidden_size=self.hidden_size,
@@ -106,9 +116,9 @@ class SMAVRA(nn.Module):
                 use_identity=True
             )
             # ----------------------------------------------------
-        # 5.) Decoder --> todo
+        # 5.) Decoder --> todo #self.attention_size??
         self.decoder = Decoder(
-            input_size=self.latent_size + self.hidden_size,  # self.attention_size,
+            input_size=self.latent_size + self.hidden_size,
             hidden_size=self.output_size,
             num_layers=self.num_layers,
             batch_first=self.batch_first,
@@ -128,7 +138,10 @@ class SMAVRA(nn.Module):
             self.loss_fn = nn.MSELoss(reduction='sum')
         if self.reconstruction_loss_function == 'MaskedMSELoss':
             self.loss_fn = MaskedMSELoss(reduction='sum')
-        elif self.use_proba_output or self.reconstruction_loss_function == 'InvLogProbLaplaceLoss':
+        elif (
+            self.use_proba_output
+            or self.reconstruction_loss_function == 'InvLogProbLaplaceLoss'
+        ):
             self.loss_fn = InvLogProbLaplaceLoss(reduction='sum')
             self.reconstruction_loss_function = 'InvLogProbLaplaceLoss'
         else:
@@ -146,7 +159,8 @@ class SMAVRA(nn.Module):
             mask (Tensor): mask
 
         Returns:
-             (Tensor, (Tensor, Tensor), (Tensor, Tensor)): h_t, (h_end, c_end), (mu, scale).
+             (Tensor, (Tensor, Tensor), (Tensor, Tensor)):
+                h_t, (h_end, c_end), (mu, scale).
         """
         # ----------------------------------------------------
         # endocer
@@ -156,7 +170,8 @@ class SMAVRA(nn.Module):
         # decoder
         (decoded_mu, decoded_scale) = self.decode(
             h_t, latent, attention, lengths, mask=mask)
-        #decoded, lengths = torch_utils.pad_packed_sequence(out, batch_first=True, padding_value=0)
+        # decoded, lengths = torch_utils.pad_packed_sequence(
+        # out, batch_first=True, padding_value=0)
 
         # return decoded result
         return((decoded_mu, decoded_scale))
@@ -169,7 +184,8 @@ class SMAVRA(nn.Module):
             mask (Tensor): mask
 
         Returns:
-            Tensor, Tensor, Tensor, Tensor, Tensor: h_t, latent, attention_weights, attention, lengths
+            Tensor, Tensor, Tensor, Tensor, Tensor:
+                h_t, latent, attention_weights, attention, lengths
         """
         # ----------------------------------------------------
         # endocer
@@ -236,11 +252,13 @@ class SMAVRA(nn.Module):
         # pack sequence again
         if self.mode == 'dynamic':
             decoder_input = torch_utils.pack_padded_sequence(
-                decoder_input, lengths=lengths, batch_first=True, enforce_sorted=False)
+                decoder_input, lengths=lengths,
+                batch_first=True, enforce_sorted=False)
         # feed it through decoder
         _, (_, _), (decoded_mu, decoded_scale) = self.decoder(
             decoder_input, mask=mask)
-        #decoded, lengths = torch_utils.pad_packed_sequence(out, batch_first=True, padding_value=0)
+        # decoded, lengths = torch_utils.pad_packed_sequence(
+        # out, batch_first=True, padding_value=0)
 
         # return decoded result
         return((decoded_mu, decoded_scale))
@@ -251,7 +269,10 @@ class SMAVRA(nn.Module):
         Returns:
             Tensor: kl div loss of latent
         """
-        mu, log_var = self.variational_latent.mu, self.variational_latent.logvar
+        mu, log_var = (
+            self.variational_latent.mu,
+            self.variational_latent.logvar
+        )
 
         return(self.kl_div(mu, log_var))
 
@@ -267,7 +288,10 @@ class SMAVRA(nn.Module):
         Returns:
             Tensor: kl div loss of attention
         """
-        mu, log_var = self.variational_attention.mu, self.variational_attention.logvar
+        mu, log_var = (
+            self.variational_attention.mu,
+            self.variational_attention.logvar
+        )
 
         if mask is not None:
             mu = mu.masked_fill(mask == 0, 0)

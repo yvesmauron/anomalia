@@ -25,7 +25,7 @@ class MLTracker(ABC):
 
     @abstractmethod
     def save_model(self):
-        """Save trained model  
+        """Save trained model
         """
         pass
 

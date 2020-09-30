@@ -1,11 +1,9 @@
 import os
-import shutil
 from src.models.anomalia.trainer import Trainer
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from datetime import datetime as dt
-import inspect
 
 
 class SmavraTrainer(Trainer):
@@ -27,8 +25,10 @@ class SmavraTrainer(Trainer):
             dataset (Dataset): dataset for training
             optimizer (object): optimizer for training
             logger (object): logger (mlflow or Azure)
-            checkpoint_interval (int, optional): frequency of checkpoint. Defaults to 1.
-            checkpoint_path (str, optional): where to checkpoint. Defaults to None.
+            checkpoint_interval (int, optional): frequency of checkpoint.
+                Defaults to 1.
+            checkpoint_path (str, optional): where to checkpoint.
+                Defaults to None.
         """
         self.model = model
         self.dataset = dataset
@@ -67,11 +67,15 @@ class SmavraTrainer(Trainer):
             batch_size (int): batch size
             clip (bool, optional): gradient clip. Defaults to True.
             max_grad_norm (int, optional): max grad norm. Defaults to 5.
-            kld_annealing_start_epoch (int, optional): kld start after epoch. Defaults to 0.
+            kld_annealing_start_epoch (int, optional): kld start after epoch.
+                Defaults to 0.
             kld_annealing_max (float, optional): kld max. Defaults to 0.8.
-            kld_annealing_intervals (list, optional): kld interval. Defaults to [15, 30, 5].
-            kld_latent_loss_weight (float, optional): kld latent loss weight. Defaults to .6.
-            kld_attention_loss_weight (float, optional): kld attention loss. Defaults to .3.
+            kld_annealing_intervals (list, optional): kld interval.
+                Defaults to [15, 30, 5].
+            kld_latent_loss_weight (float, optional): kld latent loss weight.
+                Defaults to .6.
+            kld_attention_loss_weight (float, optional): kld attention loss.
+                Defaults to .3.
 
         Returns:
             torch.nn.Module: trained model
@@ -114,8 +118,8 @@ class SmavraTrainer(Trainer):
 
                 batch_true = batch[:, :, :3]
 
-                recon_loss, kld_latent_loss, kld_attention_loss = self.model.compute_loss(
-                    out, batch_true, mask=None)
+                recon_loss, kld_latent_loss, kld_attention_loss = \
+                    self.model.compute_loss(out, batch_true, mask=None)
 
                 loss = (
                     recon_loss +
@@ -128,7 +132,7 @@ class SmavraTrainer(Trainer):
                     )
                 )
 
-                loss.backward()  # Does backpropagation and calculates gradients
+                loss.backward()  # Does backpropagation
 
                 if clip:
                     torch.nn.utils.clip_grad_norm_(
@@ -138,8 +142,9 @@ class SmavraTrainer(Trainer):
                 epoch_loss += loss.item()
                 epoch_recon_loss += recon_loss.data.item()
                 epoch_kld_latent_loss += kld_latent_loss.data.item()
-                epoch_kld_attention_loss += kld_attention_loss if isinstance(
-                    kld_attention_loss, int) else kld_attention_loss.data.item()
+                epoch_kld_attention_loss += kld_attention_loss \
+                    if isinstance(kld_attention_loss, int) \
+                    else kld_attention_loss.data.item()
 
                 self.optimizer.step()
 
@@ -173,13 +178,18 @@ class SmavraTrainer(Trainer):
     ) -> float:
         """kld annealing function
 
-        see: https: // www.microsoft.com/en-us/research/blog/less-pain-more-gain-a-simple-method-for-vae-training-with-less-of-that-kl-vanishing-agony/
+        see: https://www.microsoft.com/en-us/research/blog/less-pain-more-
+             gain-a-simple-method-for-vae-training-with-less-of-
+             that-kl-vanishing-agony/
         Args:
             start_epoch (int): which epoch annealing should start
             n_epochs (int):  number of epochs in the training
             epoch (int):  current epoch number
-            intervals (list):  list with intervals for annealing [beta= 0, beta growing, beta = max_weight]. Defaults to [3, 4, 3].
-            max_weight (float):  maximum possible weight. Defaults to 1
+            intervals (list):  list with intervals for annealing
+                [beta= 0, beta growing, beta = max_weight].
+                Defaults to [3, 4, 3].
+            max_weight (float):  maximum possible weight.
+                Defaults to 1
 
         Returns:
             float: kld weight

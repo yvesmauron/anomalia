@@ -1,8 +1,3 @@
-import os
-# data manipulating
-import numpy as np
-import pandas as pd
-import math
 # logging
 import logging
 import torch
@@ -26,13 +21,14 @@ def generate_lstm_input_sequence(
 ):
     """LSTM input
 
-    Generates a tensor that corresponds an LSTM input sequence from a 
+    Generates a tensor that corresponds an LSTM input sequence from a
     two dimensional table (rows = samples, columns = variables)
 
     Args:
         input_tensor (Tensor): the tensor that should be shifted
-        seq_len (int): the length the tensor should be 
-        window_shift (int): how much time_steps the input window should be shifted
+        seq_len (int): the length the tensor should be
+        window_shift (int): how much time_steps the input window
+            should be shifted
 
     Returns:
         Tensor: reshaped tensor
@@ -75,7 +71,7 @@ def get_id_bounds(
 
     Machines shows default values at the beginning and end of the
     operations; this functions returns the ids of the longest sequence
-    that is not operating with the default values. 
+    that is not operating with the default values.
 
     Note that you cannot just remove all default values, essentially
     because order matters and there might be also intermediate interuptions.
@@ -99,8 +95,8 @@ def get_id_bounds(
     # return start, end ids
     start = default_value_idx[split] + \
         1 if split != 0 and diff.max() != 1 else 0
-    end = default_value_idx[split +
-                            1] if split != 0 and diff.max() != 1 else default_value_idx[0]
+    end = default_value_idx[split + 1] \
+        if split != 0 and diff.max() != 1 else default_value_idx[0]
     return start, end
 
 
@@ -126,7 +122,11 @@ def padding_tensor(sequences, max_length=1000000):
     mask = sequences[0].data.new(*out_dims).fill_(0)
     # iterate over the sequences
     logger.info('Start padding breaths....')
-    with tqdm(total=len(sequences), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+    with tqdm(
+        total=len(sequences),
+        bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+        ascii=True
+    ) as pbar:
         for i, tensor in enumerate(sequences):
             # get the length of the current breath
             length = min(tensor.size(0), max_len)

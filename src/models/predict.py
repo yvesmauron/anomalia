@@ -14,7 +14,6 @@ from dotenv import find_dotenv, load_dotenv
 
 from src.models.anomalia.datasets import ResmedDatasetEpoch
 from src.features.build_features import reshape_resmed_tensor
-from src.models.anomalia.smavra import SMAVRA
 from torch.utils.data import DataLoader
 import torch
 import pyarrow.parquet as pq
@@ -22,11 +21,35 @@ import pyarrow as pa
 
 
 @click.command()
-@click.option('--run_id', type=click.STRING, help="run id from mlflow experiment. check mlflow ui.")
-@click.option('--input_dir', type=click.Path(), default="data/processed/resmed/score", help="input directory holding the data to be predicted.")
-@click.option('--output_dir', type=click.Path(), default="data/scored/resmed", help="the directory the predictions should be written to.")
-@click.option('--preprocessing_config', type=click.Path(), default="config/preprocessing_config.json", help="location of preprocessing config in mlflow.")
-@click.option('--seq_len', type=click.INT, default=750, help="sequence lengths -> workaround. Defaults to 750.")
+@click.option(
+    '--run_id',
+    type=click.STRING,
+    help="run id from mlflow experiment. check mlflow ui."
+)
+@click.option(
+    '--input_dir',
+    type=click.Path(),
+    default="data/processed/resmed/score",
+    help="input directory holding the data to be predicted."
+)
+@click.option(
+    '--output_dir',
+    type=click.Path(),
+    default="data/scored/resmed",
+    help="the directory the predictions should be written to."
+)
+@click.option(
+    '--preprocessing_config',
+    type=click.Path(),
+    default="config/preprocessing_config.json",
+    help="location of preprocessing config in mlflow."
+)
+@click.option(
+    '--seq_len',
+    type=click.INT,
+    default=750,
+    help="sequence lengths -> workaround. Defaults to 750."
+)
 def predict_smavra(
     run_id: str,
     input_dir: str = "data/processed/resmed/score",
@@ -38,10 +61,14 @@ def predict_smavra(
 
     Args:
         run_id (str): run_id from mlflow experiment
-        input_dir (str, optional): input directory holding the data to be predicted. Defaults to "data/processed/resmed/score".
-        output_dir (str, optional): the directory the predictions should be written to. Defaults to "data/scored/resmed".
-        preprocessing_config (str, optional): location of preprocessing config in mlflow. Defaults to "config/preprocessing_config.json".
-        seq_len (int, optional): sequence lengths -> workaround. Defaults to 750.
+        input_dir (str, optional): input directory holding the data to be
+            predicted. Defaults to "data/processed/resmed/score".
+        output_dir (str, optional): the directory the predictions should be
+            written to. Defaults to "data/scored/resmed".
+        preprocessing_config (str, optional): location of preprocessing config
+            in mlflow. Defaults to "config/preprocessing_config.json".
+        seq_len (int, optional): sequence lengths -> workaround.
+            Defaults to 750.
     """
     column_order = ["mask_press", "resp_flow", "delivered_volum"]
 
@@ -102,7 +129,11 @@ def predict_smavra(
 
         preds = []
 
-        with tqdm(total=len(score_loader), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+        with tqdm(
+            total=len(score_loader),
+            bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+            ascii=True
+        ) as pbar:
             pbar.set_postfix(file=score_file_path)
             for i, epoch in enumerate(score_loader):
                 # get prediction

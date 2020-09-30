@@ -34,7 +34,7 @@ class AzureTracker(MLTracker):
 
         Arguments:
             key {string} -- name or metric to be logged
-            value {int/string} -- value to be logged    
+            value {int/string} -- value to be logged
 
         Keyword Arguments:
             step {int} -- not used (default: {None})
@@ -42,7 +42,7 @@ class AzureTracker(MLTracker):
         self.run.log(key, value)
 
     def save_model(self, model, flavor='pytorch'):
-        """Save trained model  
+        """Save trained model
 
         Arguments:
             model {pytorch.model} -- model to be saved

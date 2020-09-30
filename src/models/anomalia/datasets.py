@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import Dataset
 # utils
-import os
 
 
 class ResmedDatasetEpoch(Dataset):
@@ -22,15 +21,18 @@ class ResmedDatasetEpoch(Dataset):
         Args:
             batch_size (int): batch size
             data (object): location of training data or tensor itself.
-            transform (list, optional): transforms; not used yet. Defaults to None.
+            transform (list, optional): transforms; not used yet.
+                Defaults to None.
             device (str, optional): device. Defaults to 'cuda'.
-            means (list, optional): means used during preprocessing. Defaults to None.
-            stds (list, optional): stds used during preprocessing. Defaults to None.
+            means (list, optional): means used during preprocessing.
+                Defaults to None.
+            stds (list, optional): stds used during preprocessing.
+                Defaults to None.
         """
         super().__init__()
-        if type(data) is torch.Tensor:
+        if isinstance(data, torch.Tensor):
             self.respiration_data = data
-        elif type(data) is str:
+        elif isinstance(data, str):
             self.respiration_data = torch.load(data)
         else:
             raise ValueError
@@ -40,15 +42,16 @@ class ResmedDatasetEpoch(Dataset):
         self.device = device
 
         # cut length that it matches with batch_size
-        #self.respiration_data = torch.cat(self.respiration_data)
         self.num_samples = self.respiration_data.shape[0]
         self.num_samples = (self.num_samples // batch_size) * batch_size
         self.respiration_data = self.respiration_data[:self.num_samples, :, :3]
 
-        self.means = self.respiration_data.view(-1,
-                                                3).mean(axis=0) if means is None else means
-        self.stds = self.respiration_data.view(-1,
-                                               3).std(axis=0) if stds is None else stds
+        self.means = self.respiration_data \
+            .view(-1, 3) \
+            .mean(axis=0) if means is None else means
+        self.stds = self.respiration_data \
+            .view(-1, 3) \
+            .std(axis=0) if stds is None else stds
 
         self.respiration_data = (
             self.respiration_data - self.means) / (self.stds * 2)

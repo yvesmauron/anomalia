@@ -1,23 +1,20 @@
 # utils
-import os
-import sys
 import click
 import json
 from dotenv import find_dotenv, load_dotenv
 import logging
 from pathlib import Path
-import tempfile
 
 # dl
 import torch
 
 # azure
-from azureml.core import Workspace, Dataset
+# from azureml.core import Workspace, Dataset
 
 # model specific
 from src.models.anomalia.smavra import SMAVRA
 from src.models.anomalia.datasets import ResmedDatasetEpoch, TestDataset
-from src.models.tracking.azurml import AzureTracker
+# from src.models.tracking.azurml import AzureTracker
 from src.models.tracking.mlflow import MLFlowTracker
 from src.models.anomalia.smavra_trainer import SmavraTrainer
 
@@ -33,12 +30,42 @@ USE_CUDA = True
 
 
 @click.command()
-@click.option('--batch_size', type=click.INT, default=64, help="Batch size to be used.")
-@click.option('--train_data', type=click.Path(), default="data/processed/resmed/train/train.pt", help="Path to training data.")
-@click.option('--n_epochs', type=click.INT, default=2000, help="Numbers of epochs the model should be trained.")
-@click.option('--ds_name', type=click.Path(), default="resmed_dataset", help="Dataset name in Azure Machine Leaning Services, if it is used for training.")
-@click.option('--output_dir', type=click.Path(), default="./outputs", help="Output directory to be used in Azure ML Services.")
-@click.option('--compute_node', type=click.Path(), default="local", help="Where it should be computed; not supported at the moment.")
+@click.option(
+    '--batch_size',
+    type=click.INT,
+    default=64,
+    help="Batch size to be used."
+)
+@click.option(
+    '--train_data',
+    type=click.Path(),
+    default="data/processed/resmed/train/train.pt",
+    help="Path to training data."
+)
+@click.option(
+    '--n_epochs',
+    type=click.INT,
+    default=2000,
+    help="Numbers of epochs the model should be trained."
+)
+@click.option(
+    '--ds_name',
+    type=click.Path(),
+    default="resmed_dataset",
+    help="Dataset name in Azure Machine Leaning Services, if used."
+)
+@click.option(
+    '--output_dir',
+    type=click.Path(),
+    default="./outputs",
+    help="Output directory to be used in Azure ML Services."
+)
+@click.option(
+    '--compute_node',
+    type=click.Path(),
+    default="local",
+    help="Where it should be computed; not supported at the moment."
+)
 def train_smavra(
     batch_size: int,
     train_data: str,
@@ -53,24 +80,23 @@ def train_smavra(
         batch_size (int): Batch size to be used.
         train_data (str): Path to training data.
         n_epochs (int): Numbers of epochs the model should be trained.
-        ds_name (str): Dataset name in Azure Machine Leaning Services, if it is used for training.
+        ds_name (str): Dataset name in Azure Machine Leaning Services.
         output_dir (str): Output directory to be used in Azure ML Services.
-        compute_node (str): Where it should be computed; not supported at the moment.
-
-    Raises:
-        FileNotFoundError: if Azure ML Services should be used and there is no config.
+        compute_node (str): Where it should be computed; not supported.
     """
     # --------------------------------------------------------
     # init workspace
-    if not os.path.exists(os.environ.get("ML_WORKSPACE_CONFIG")):
-        raise FileNotFoundError
+    # if not os.path.exists(os.environ.get("ML_WORKSPACE_CONFIG")):
+    #     raise FileNotFoundError
 
-    if compute_node == 'local':
-        train_paths = ['data/resmed/train/train_resmed.pt']
-    else:
-        ws = Workspace.from_config(path=os.environ.get("ML_WORKSPACE_CONFIG"))
-        train_files = Dataset.get_by_name(ws, name=ds_name)
-        train_paths = train_files.download(target_path='.', overwrite=True)
+    # if compute_node == 'local':
+    #     train_paths = ['data/resmed/train/train_resmed.pt']
+    # else:
+    #     ws = Workspace.from_config(
+    #       path=os.environ.get("ML_WORKSPACE_CONFIG")
+    #     )
+    #     train_files = Dataset.get_by_name(ws, name=ds_name)
+    #     train_paths = train_files.download(target_path='.', overwrite=True)
 
     # --------------------------------------------------------
     # define learner
@@ -114,8 +140,8 @@ def train_smavra(
     if compute_node == 'local':
         logger = MLFlowTracker(EXPERIMENT_NAME, "model",
                                './environment.yml', ['./src/models'])
-    else:
-        logger = AzureTracker(ws, EXPERIMENT_NAME, output_dir)
+    # else:
+    #     logger = AzureTracker(ws, EXPERIMENT_NAME, output_dir)
 
     # --------------------------------------------------------
     # log input values for lstm

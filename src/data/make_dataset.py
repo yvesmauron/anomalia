@@ -7,14 +7,17 @@ from dotenv import find_dotenv, load_dotenv
 import shutil
 from tqdm import tqdm
 import json
-from src.features.build_features import process_resmed_train, process_resmed_score
+from src.features.build_features import (
+    process_resmed_train,
+    process_resmed_score
+)
 
 # Azure keyvault dependencies
 from azure.keyvault.secrets import SecretClient
 from azure.identity import DefaultAzureCredential
 
 # Required for Azure Data Lake Storage Gen1 filesystem management
-from azure.datalake.store import core, lib, multithread
+from azure.datalake.store import core, lib
 
 # Set the logging level for all azure-* libraries
 azure_logger = logging.getLogger('azure')
@@ -22,11 +25,28 @@ azure_logger.setLevel(logging.WARNING)
 
 
 @click.command()
-@click.argument('input_user_data_path', type=click.Path(), default="exploration/video-analysis/normal")
-@click.argument('input_data_path', type=click.Path(), default="exploration/video-analysis/data")
-@click.argument('output_user_data_path', type=click.Path(), default="data/external/user_classification/normal")
-@click.argument('output_data_path', type=click.Path(), default="data/raw/resmed")
-def sync_azure_datalake(input_user_data_path, input_data_path, output_user_data_path, output_data_path):
+@click.argument(
+    'input_user_data_path',
+    type=click.Path(),
+    default="exploration/video-analysis/normal"
+)
+@click.argument(
+    'input_data_path',
+    type=click.Path(),
+    default="exploration/video-analysis/data"
+)
+@click.argument(
+    'output_user_data_path',
+    type=click.Path(),
+    default="data/external/user_classification/normal"
+)
+@click.argument(
+    'output_data_path',
+    type=click.Path(),
+    default="data/raw/resmed"
+)
+def sync_azure_datalake(input_user_data_path, input_data_path,
+                        output_user_data_path, output_data_path):
     """ Runs data processing scripts to turn raw data from (../raw) into
         cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -71,7 +91,11 @@ def sync_azure_datalake(input_user_data_path, input_data_path, output_user_data_
     train_data_paths = []
 
     logger.info("downloading user classification data...")
-    with tqdm(total=len(user_classifications), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+    with tqdm(
+        total=len(user_classifications),
+        bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+        ascii=True
+    ) as pbar:
         for file_path in user_classifications:
             pbar.set_postfix(file=str(os.path.basename(file_path)))
             dst_path = os.path.join(
@@ -86,7 +110,8 @@ def sync_azure_datalake(input_user_data_path, input_data_path, output_user_data_
             with open(dst_path, "r") as f:
                 config = json.load(f)
 
-            if config["range"]["from"] is not None and config["range"]["to"] is not None:
+            if config["range"]["from"] is not None \
+                    and config["range"]["to"] is not None:
                 train_data_paths.append(os.path.basename(config["data_file"]))
             else:
                 Path(dst_path).unlink()
@@ -95,12 +120,17 @@ def sync_azure_datalake(input_user_data_path, input_data_path, output_user_data_
 
     # get all data paths
     data_paths = adlsFileSystemClient.ls(input_data_path)
-    existing_data_paths = [os.path.basename(p)
-                           for p in Path(os.path.join(output_data_path)).iterdir()
-                           ]
+    existing_data_paths = [
+        os.path.basename(p)
+        for p in Path(os.path.join(output_data_path)).iterdir()
+    ]
 
     logger.info("downloading sensor data if not exists...")
-    with tqdm(total=len(data_paths), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+    with tqdm(
+        total=len(data_paths),
+        bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+        ascii=True
+    ) as pbar:
         for file_path in data_paths:
             # set posix for info
             pbar.set_postfix(file=str(os.path.basename(file_path)))

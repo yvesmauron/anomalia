@@ -37,9 +37,10 @@ class MLFlowTracker(MLTracker):
             value {string} -- value to be logged
 
         Keyword Arguments:
-            step {int} -- e.g. which epoch this loss was recorded (default: {None})
+            step {int} -- e.g. which epoch this loss was recorded
+                (default: {None})
         """
-        if step == None:
+        if step is None:
             mlflow.log_param(key, value)
         else:
             mlflow.log_metric(key, value, step)
@@ -54,7 +55,7 @@ class MLFlowTracker(MLTracker):
         mlflow.log_artifact(local_path, artifact_path)
 
     def save_model(self, model, flavor='pytorch'):
-        """Save trained model  
+        """Save trained model
 
         Arguments:
             model {pytorch.model} -- model to be saved

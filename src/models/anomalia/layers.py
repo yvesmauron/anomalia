@@ -1,7 +1,6 @@
 import torch as torch
 from torch import nn as nn
 import torch.nn.utils.rnn as torch_utils
-import torch.nn.functional as F
 
 
 class Encoder(nn.Module):
@@ -22,9 +21,12 @@ class Encoder(nn.Module):
             input_size (int): number of features per time step
             hidden_size (int): number of hidden nodes per time step
             num_layers (int): number of layers
-            dropout (float, optional): percentage of nodes that should switched out at any term. Defaults to 0.
-            batch_first (bool, optional): if shape is (batch, sequence, features) or not. Defaults to True.
-            rnn_type (str, optional): what rnn type to choose. Defaults to 'LSTM'.
+            dropout (float, optional): percentage of nodes that should
+                switched out at any term. Defaults to 0.
+            batch_first (bool, optional): if shape is (batch, sequence,
+                features) or not. Defaults to True.
+            rnn_type (str, optional): what rnn type to choose.
+                Defaults to 'LSTM'.
 
         Raises:
             NotImplementedError: if invalid rnn type is selected
@@ -67,27 +69,32 @@ class Encoder(nn.Module):
         Returns:
             torch.Tensor: ouput tensor
         """
-        # Passing in the input and hidden state into the model and obtaining outputs
+        # Passing in the input and hidden state into the model and obtaining
+        # outputs
         h_t, (h_end, c_end) = self.model(x)
-        # Reshaping the outputs such that it can be fit into the fully connected layer
+        # Reshaping the outputs such that it can be fit into the fully
+        # connected layer
         # h_end.shape[1] -> batch size
         # h_end.shape[2] -> hidden size
         # creates the output that fits
         h_end_out = h_end[-1, :, :]
-        #out = self.linear_adapter(lin_input)
+        # out = self.linear_adapter(lin_input)
         return(h_t, (h_end, c_end), h_end_out)
 
 
 class Variational(nn.Module):
     """Variation Layer of Variational AutoEncoder"""
 
-    def __init__(self, hidden_size: int, latent_size: int, use_identity: bool = False):
+    def __init__(self, hidden_size: int, latent_size: int,
+                 use_identity: bool = False):
         """Variational
 
         Args:
-            hidden_size (int): number of features per time step(output from encoder)
+            hidden_size (int): number of features per time step
+                (output from encoder)
             latent_size (int): what size the latent vector should be
-            use_identity (bool, optional): if identity should be used. Defaults to False.
+            use_identity (bool, optional): if identity should be used.
+                Defaults to False.
         """
         super(Variational, self).__init__()
 
@@ -115,13 +122,14 @@ class Variational(nn.Module):
             self.hidden_to_logvar = nn.Linear(
                 self.hidden_size, self.latent_size)
 
-            # Fills the input Tensor with values according to the method described in
-            # Understanding the difficulty of training deep feedforward neural networks -
-            # Glorot, X. & Bengio, Y. (2010)
+            # Fills the input Tensor with values according to the method
+            # described in: "Understanding the difficulty of training deep
+            # feedforward neural networks" - Glorot, X. & Bengio, Y. (2010)
             nn.init.xavier_uniform_(self.hidden_to_mu.weight)
             nn.init.xavier_uniform_(self.hidden_to_logvar.weight)
 
-    def forward(self, hidden: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, hidden: torch.Tensor,
+                mask: torch.Tensor = None) -> torch.Tensor:
         """Forward pass
 
         Args:
@@ -161,7 +169,8 @@ class Variational(nn.Module):
 class MultiHeadAttention(nn.Module):
     """Multihead self-attention"""
 
-    def __init__(self, hidden_size: int, n_heads: int, dropout: float, device: str):
+    def __init__(self, hidden_size: int, n_heads: int,
+                 dropout: float, device: str):
         """Constructor
 
         Args:
@@ -206,7 +215,8 @@ class MultiHeadAttention(nn.Module):
             query (torch.Tensor): query tensor
             key (torch.Tensor): key tensor
             value (torch.Tensor): value tensor
-            mask (torch.Tensor): optional mask for variable length input (default: {None})
+            mask (torch.Tensor): optional mask for variable length input
+                (default: {None})
 
         Returns:
             (torch.Tensor, torch.Tensor): (attended output, attention weights)
@@ -253,7 +263,11 @@ class MultiHeadAttention(nn.Module):
         # mask energy and attention
         if mask is not None:
             energy_mask = mask.view(
-                batch_size, -1, self.n_heads, self.head_size).permute(0, 2, 1, 3)
+                batch_size,
+                -1,
+                self.n_heads,
+                self.head_size
+            ).permute(0, 2, 1, 3)
             # energy_mask = [batch size, n heads, query len, head dim]
             energy_mask = torch.matmul(
                 energy_mask, energy_mask.permute(0, 1, 3, 2)) == 0
@@ -317,13 +331,18 @@ class Decoder(nn.Module):
             input_size (int): number of features per time step
             hidden_size (int): number of hidden nodes per time step
             num_layers (int): number of layers
-            dropout (float, optional): percentage of nodes that should switched out at any term. Defaults to 0.
-            batch_first (bool, optional): if shape is (batch, sequence, features) or not. Defaults to True.
-            rnn_type (str, optional): what rnn type to choose. Defaults to 'LSTM'.
-            proba_output (bool): if it should output a probabilistic distribution. Defaults to False.
+            dropout (float, optional): percentage of nodes that should
+                switched out at any term. Defaults to 0.
+            batch_first (bool, optional): if shape is (batch, sequence,
+                features) or not. Defaults to True.
+            rnn_type (str, optional): what rnn type to choose.
+                Defaults to 'LSTM'.
+            proba_output (bool): if it should output a probabilistic
+                distribution. Defaults to False.
 
         Raises:
-            NotImplementedError: Only RNNs of type LSTM and GRU are allowed. Otherwise this error this thrown.
+            NotImplementedError: Only RNNs of type LSTM and GRU are allowed.
+                Otherwise this error this thrown.
         """
         super(Decoder, self).__init__()
 
@@ -362,7 +381,8 @@ class Decoder(nn.Module):
         self.tanh_mu = nn.Tanh()
         self.tanh_to_mu = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
-        # if you want probalistic ouput measure -- define second output for scale
+        # if you want probalistic ouput measure -- define second output for
+        # scale
         if proba_output:
             self.hidden_to_tanh_scale = nn.Linear(
                 self.hidden_size, self.hidden_size)
@@ -384,13 +404,16 @@ class Decoder(nn.Module):
             mask (torch.Tensor): mask
 
         Returns:
-             (torch.Tensor, (torch.Tensor, torch.Tensor), (torch.Tensor, torch.Tensor)): h_t, (h_end, c_end), (mu, scale).
+             (torch.Tensor, (torch.Tensor, torch.Tensor),
+             (torch.Tensor, torch.Tensor)): h_t, (h_end, c_end), (mu, scale).
         """
-        # Passing in the input and hidden state into the model and obtaining outputs
+        # Passing in the input and hidden state into the model and obtaining
+        # outputs
         h_t, (h_end, c_end) = self.model(x)
         # check if dynamic
         if mask is not None:
-            # Reshaping the outputs such that it can be fit into the fully connected layer
+            # Reshaping the outputs such that it can be fit into the fully
+            # connected layer
             h_t, _ = torch_utils.pad_packed_sequence(
                 h_t, batch_first=True, padding_value=0)
 

@@ -12,7 +12,8 @@ class MaskedMSELoss(torch.nn.modules.loss._Loss):
         """Constructor
 
         Arguments:
-            reduction (string, optional) -- how MSE should be reduced. Defaults to 'mean'.
+            reduction (string, optional) -- how MSE should be reduced.
+                Defaults to 'mean'.
         """
         super(MaskedMSELoss, self).__init__()
 
@@ -21,12 +22,13 @@ class MaskedMSELoss(torch.nn.modules.loss._Loss):
 
         self.reduction = reduction
 
-    def forward(self, x: torch.Tensor, target: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, target: torch.Tensor,
+                mask: torch.Tensor) -> torch.Tensor:
         """Foreward pass
 
         Args:
             x (torch.Tensor): input tensor (output from neural network)
-            target (torch.Tensor): target tensor 
+            target (torch.Tensor): target tensor
             mask (torch.Tensor): mask tensor
 
         Returns:
@@ -49,9 +51,11 @@ class InvLogProbLaplaceLoss(torch.nn.modules.loss._Loss):
     def __init__(self, reduction):
         super(InvLogProbLaplaceLoss, self).__init__()
 
-        if not reduction in ['sum', "mean"]:
+        if reduction not in ['sum', "mean"]:
             NotImplementedError(
-                "InvLogProbLaplaceLoss only supports sum and mean for the reduction parameter")
+                "InvLogProbLaplaceLoss only supports sum and mean " +
+                "for the reduction parameter"
+            )
 
         self.reduction = reduction
 
@@ -70,8 +74,8 @@ class InvLogProbLaplaceLoss(torch.nn.modules.loss._Loss):
         log_prob = (-torch.log(2 * scale) - torch.abs(value - mu) / scale)
 
         if self.reduction == 'sum':
-            l = log_prob.sum()
+            log_prob = log_prob.sum()
         else:
-            l = log_prob.mean()
+            log_prob = log_prob.mean()
 
-        return(-l)
+        return(-log_prob)

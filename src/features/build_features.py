@@ -1,8 +1,6 @@
 # general
-import sys
 import os
 import shutil
-import glob
 from pathlib import Path
 from tqdm import tqdm
 import json
@@ -12,7 +10,6 @@ import logging.config
 import logging
 
 # data structures
-import numpy as np
 import torch
 from torch import Tensor
 import pandas as pd
@@ -55,10 +52,13 @@ def process_resmed_train(
     """generate training data using user classification config
 
     Args:
-        user_data_path (str, optional): Path to user classification data. Defaults to "data/external/user_classification".
+        user_data_path (str, optional): Path to user classification data.
+            Defaults to "data/external/user_classification".
         data_path (str, optional): Path to data. Defaults to "data/raw/resmed".
-        output_path (str, optional): Path for training set. Defaults to "data/processed/resmed".
-        seq_len (int, optional): Sequence length for algorithm. Defaults to 750.
+        output_path (str, optional): Path for training set.
+            Defaults to "data/processed/resmed".
+        seq_len (int, optional): Sequence length for algorithm.
+            Defaults to 750.
 
     Returns:
         [torch.Tensor]: Tensor in shape ()
@@ -79,7 +79,11 @@ def process_resmed_train(
     # process data
     tensor_list = []
 
-    with tqdm(total=len(configs), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+    with tqdm(
+        total=len(configs),
+        bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+        ascii=True
+    ) as pbar:
         for config in configs:
 
             # read configuration file
@@ -94,7 +98,8 @@ def process_resmed_train(
             ).to_pandas()
 
             # get normal range from config
-            if config["range"]["from"] is not None and config["range"]["to"] is not None:
+            if config["range"]["from"] is not None \
+                    and config["range"]["to"] is not None:
                 start_range = float(config["range"]["from"] * 60)
                 end_range = float(config["range"]["to"] * 60)
 
@@ -128,7 +133,11 @@ def process_resmed_score(
 
     output_path.mkdir(parents=True, exist_ok=True)
 
-    with tqdm(total=len(data_paths), bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}", ascii=True) as pbar:
+    with tqdm(
+        total=len(data_paths),
+        bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+        ascii=True
+    ) as pbar:
         for p in data_paths:
 
             file_name = os.path.basename(p)
