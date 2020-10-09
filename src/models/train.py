@@ -103,7 +103,7 @@ def train_smavra(
     smarva_input_params = {
         'input_size': 1 if TEST_MODE else 3,
         'hidden_size': 10 if TEST_MODE else 64,
-        'latent_size': 1 if TEST_MODE else 4,
+        'latent_size': 1 if TEST_MODE else 6,
         # 'attention_size':1 if TEST_MODE else 3, # not supported anymore
         'output_size': 1 if TEST_MODE else 3,
         'num_layers': 1 if TEST_MODE else 2,
@@ -114,7 +114,7 @@ def train_smavra(
         'mode': 'static',
         'rnn_type': 'LSTM',
         'use_variational_attention': True,
-        'use_proba_output': True
+        'use_proba_output': False
     }
 
     smavra = SMAVRA(**smarva_input_params)
@@ -175,8 +175,8 @@ def train_smavra(
         kld_annealing_start_epoch=0,
         kld_annealing_max=0.6,
         kld_annealing_intervals=[15, 25, 5],
-        kld_latent_loss_weight=.6,
-        kld_attention_loss_weight=.01
+        kld_latent_loss_weight=.55,
+        kld_attention_loss_weight=.02
     )
 
     # log important artifacsts, that are used for inference

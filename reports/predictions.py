@@ -15,9 +15,21 @@ scored_path = Path("data/scored/resmed")
 if report_figures_path.exists():
     shutil.rmtree(report_figures_path)
 
+color_palette = {
+    "resp_flow": "rgba(247, 201, 77, 1)",
+    "deli_volu": "rgba(64, 145, 182, 1)",
+    "mask_pres": "rgba(105, 173, 82, 1)",
+    "true": "rgba(0, 0, 0, 1)",
+    "se_resp_flow": "rgba(247, 201, 77, 1)",
+    "se_deli_volu": "rgba(64, 145, 182, 1)",
+    "se_mask_pres": "rgba(105, 173, 82, 1)",
+}
+
 report_figures_path.mkdir()
 
 sessions = [str(os.path.basename(p))[:15] for p in scored_path.iterdir()]
+
+# sessions = sessions[-1:]
 
 for session in sessions:
 
@@ -43,7 +55,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.mask_press_se,
             mode='lines',
-            name='Scaled SE MaskPressure'
+            name='Scaled SE MaskPressure',
+            line=dict(
+                color=color_palette["se_mask_pres"]
+            )
         ),
         row=4,
         col=1
@@ -53,7 +68,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.delivered_volum_se,
             mode='lines',
-            name='Scaled SE Deliveredvolume'
+            name='Scaled SE Deliveredvolume',
+            line=dict(
+                color=color_palette["se_deli_volu"]
+            )
         ),
         row=4,
         col=1
@@ -64,7 +82,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.resp_flow_se,
             mode='lines',
-            name='Scaled SE RespFlow'
+            name='Scaled SE RespFlow',
+            line=dict(
+                color=color_palette["se_resp_flow"]
+            )
         ),
         row=4,
         col=1
@@ -76,7 +97,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.mask_press,
             mode='lines',
-            name='Mask Pressure (True)'
+            name='Mask Pressure (True)',
+            line=dict(
+                color=color_palette["true"]
+            )
         ),
         row=3,
         col=1
@@ -86,7 +110,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.mask_press_mu,
             mode='lines',
-            name='Mask Pressure (Predicted)'
+            name='Mask Pressure (Predicted)',
+            line=dict(
+                color=color_palette["mask_pres"]
+            )
         ),
         row=3,
         col=1
@@ -98,7 +125,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.delivered_volum,
             mode='lines',
-            name='Delivered Volume (True)'
+            name='Delivered Volume (True)',
+            line=dict(
+                color=color_palette["true"]
+            )
         ),
         row=2,
         col=1
@@ -108,7 +138,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.delivered_volum_mu,
             mode='lines',
-            name='Delivered Volume (Predicted)'
+            name='Delivered Volume (Predicted)',
+            line=dict(
+                color=color_palette["deli_volu"]
+            )
         ),
         row=2,
         col=1
@@ -120,7 +153,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.resp_flow,
             mode='lines',
-            name='Resp Flow (True)'
+            name='Resp Flow (True)',
+            line=dict(
+                color=color_palette["true"]
+            )
         ),
         row=1,
         col=1
@@ -130,7 +166,10 @@ for session in sessions:
             x=df.timestamp,
             y=df.resp_flow_mu,
             mode='lines',
-            name='Resp Flow (Predicted)'
+            name='Resp Flow (Predicted)',
+            line=dict(
+                color=color_palette["resp_flow"]
+            )
         ),
         row=1,
         col=1

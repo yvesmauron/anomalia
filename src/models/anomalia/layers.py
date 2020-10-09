@@ -150,12 +150,12 @@ class Variational(nn.Module):
         # calculate std
         std = self.logvar.mul(0.5).exp_()
         # get epsilon based on normal distribution
-        if torch.cuda.is_available():
+        if next(self.parameters()).is_cuda:
             eps = torch.cuda.FloatTensor(std.size()).normal_()
         else:
             eps = torch.FloatTensor(std.size()).normal_()
 
-        eps = torch.autograd.Variable(eps)
+        eps = nn.parameter.Parameter(eps, requires_grad=False)
         # return latent output
         latent = eps.mul(std).add(self.mu)
 
@@ -200,7 +200,9 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         # scale
-        self.scale = torch.sqrt(torch.FloatTensor([self.head_size])).to(device)
+        self.scale = nn.parameter.Parameter(
+            torch.sqrt(torch.FloatTensor([self.head_size]))
+        )
 
     def forward(
         self,
