@@ -45,7 +45,7 @@ USE_CUDA = True
 @click.option(
     '--n_epochs',
     type=click.INT,
-    default=2000,
+    default=2260,
     help="Numbers of epochs the model should be trained."
 )
 @click.option(
@@ -103,17 +103,17 @@ def train_smavra(
     smarva_input_params = {
         'input_size': 1 if TEST_MODE else 3,
         'hidden_size': 10 if TEST_MODE else 64,
-        'latent_size': 1 if TEST_MODE else 6,
-        # 'attention_size':1 if TEST_MODE else 3, # not supported anymore
+        'latent_size': 1 if TEST_MODE else 12,
+        'attention_size': 1 if TEST_MODE else 1,  # not supported anymore
         'output_size': 1 if TEST_MODE else 3,
         'num_layers': 1 if TEST_MODE else 2,
-        'n_heads': 1 if TEST_MODE else 2,
+        'n_heads': 1 if TEST_MODE else 1,
         'dropout': 0.25,
         'batch_first': True,
         'cuda': USE_CUDA,
         'mode': 'static',
         'rnn_type': 'LSTM',
-        'use_variational_attention': True,
+        'use_variational_attention': False,
         'use_proba_output': False
     }
 
@@ -173,10 +173,10 @@ def train_smavra(
         clip=True,
         max_grad_norm=5,
         kld_annealing_start_epoch=0,
-        kld_annealing_max=0.6,
+        kld_annealing_max=0.5,
         kld_annealing_intervals=[15, 25, 5],
-        kld_latent_loss_weight=.55,
-        kld_attention_loss_weight=.02
+        kld_latent_loss_weight=.1,
+        kld_attention_loss_weight=.0001
     )
 
     # log important artifacsts, that are used for inference

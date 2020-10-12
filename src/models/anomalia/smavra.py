@@ -15,7 +15,7 @@ class SMAVRA(nn.Module):
         input_size: int,
         hidden_size: int,
         latent_size: int,
-        # attention_size,
+        attention_size: int,
         output_size: int,
         num_layers: int,
         n_heads: int = 2,
@@ -34,6 +34,7 @@ class SMAVRA(nn.Module):
             input_size (int): size of input features per time step
             hidden_size (int): size of hidden layer
             latent_size (int): size of latent vectors
+            attention_size (int): size of the attention layer
             output_size (int): [description]
             num_layers (int): num layers for encoder/decoder
             n_heads (int, optional): number of attention head.
@@ -66,7 +67,7 @@ class SMAVRA(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.latent_size = latent_size
-        # self.attention_size = attention_size
+        self.attention_size = attention_size
         self.output_size = output_size
         self.num_layers = num_layers
         self.n_heads = n_heads
@@ -102,6 +103,7 @@ class SMAVRA(nn.Module):
 
         self.attention = MultiHeadAttention(
             hidden_size=self.hidden_size,
+            attention_size=attention_size,
             n_heads=self.n_heads,
             dropout=self.dropout,
             device='cuda' if self.use_cuda else 'cpu'  # remove in future

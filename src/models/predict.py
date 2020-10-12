@@ -18,11 +18,13 @@ from torch.utils.data import DataLoader
 import torch
 import pyarrow.parquet as pq
 import pyarrow as pa
+import pickle as pk
 
 
 @click.command()
 @click.option(
     '--run_id',
+    default="352ad2d8d5994814b0ed9da88bc3951c",
     type=click.STRING,
     help="run id from mlflow experiment. check mlflow ui."
 )
@@ -35,7 +37,7 @@ import pyarrow as pa
 @click.option(
     '--output_dir',
     type=click.Path(),
-    default="data/scored/resmed",
+    default="data/output/",
     help="the directory the predictions should be written to."
 )
 @click.option(
@@ -50,12 +52,34 @@ import pyarrow as pa
     default=750,
     help="sequence lengths -> workaround. Defaults to 750."
 )
+@click.option(
+    '--device',
+    type=click.STRING,
+    default="cuda",
+    help="device to run inference on."
+)
+@click.option(
+    '--explain_latent',
+    type=click.BOOL,
+    default=True,
+    help="if latent space should be explained or not."
+)
+@click.option(
+    '--explain_attention',
+    type=click.BOOL,
+    default=False,
+    help="if attention space should be explained or not." +
+         "(could lead to very large files)"
+)
 def predict_smavra(
     run_id: str,
     input_dir: str = "data/processed/resmed/score",
     output_dir: str = "data/scored/resmed",
     preprocessing_config: str = "config/preprocessing_config.json",
-    seq_len: int = 750
+    seq_len: int = 750,
+    device: str = "cuda",
+    explain_latent: bool = True,
+    explain_attention: bool = False
 ):
     """predict using trained smavra network
 
@@ -69,6 +93,7 @@ def predict_smavra(
             in mlflow. Defaults to "config/preprocessing_config.json".
         seq_len (int, optional): sequence lengths -> workaround.
             Defaults to 750.
+        device (str, optional): device to run inference on.
     """
     column_order = ["mask_press", "resp_flow", "delivered_volum"]
 
@@ -76,13 +101,29 @@ def predict_smavra(
 
     logger.info("Preparing directory structure.")
     # clean up output_dir
-    output_dir = Path(output_dir)
+    output_score_dir = Path(os.path.join(output_dir, "score"))
+    output_explain_latent_dir = Path(
+        os.path.join(output_dir, "explain", "latent"))
+    output_explain_attention_dir = Path(
+        os.path.join(output_dir, "explain", "attention"))
 
     # remove directories if they exist
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
+    if output_score_dir.exists():
+        shutil.rmtree(output_score_dir)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_score_dir.mkdir(parents=True, exist_ok=True)
+
+    # remove directories if they exist
+    if output_explain_latent_dir.exists():
+        shutil.rmtree(output_explain_latent_dir)
+
+    output_explain_latent_dir.mkdir(parents=True, exist_ok=True)
+
+    # remove directories if they exist
+    if output_explain_attention_dir.exists():
+        shutil.rmtree(output_explain_attention_dir)
+
+    output_explain_attention_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Setting up model.")
     mlflow_client = MlflowClient()
@@ -100,8 +141,10 @@ def predict_smavra(
     smavra = mlflow.pytorch.load_model('runs:/' + run_id + '/model')
 
     smavra.eval()
-    # TODO: Move the model to the cpu (there is a bug somewhere)
-    smavra.cuda()
+    if device == "cuda":
+        smavra.cuda()
+    else:
+        smavra.cpu()
 
     logger.info("Start with predicition.")
     for score_file_path in Path(input_dir).iterdir():
@@ -116,7 +159,7 @@ def predict_smavra(
         score_dataset = ResmedDatasetEpoch(
             data=pred_tensor,
             batch_size=1,
-            device="cuda",
+            device=device,
             means=torch.Tensor(preprocessing_config["means"]),
             stds=torch.Tensor(preprocessing_config["stds"])
         )
@@ -124,10 +167,12 @@ def predict_smavra(
         score_loader = DataLoader(
             score_dataset,
             batch_size=1,
-            shuffle=False
+            shuffle=False,
         )
 
         preds = []
+        latents = []
+        attention_weights = {}
 
         with tqdm(
             total=len(score_loader),
@@ -137,7 +182,22 @@ def predict_smavra(
             pbar.set_postfix(file=score_file_path)
             for i, epoch in enumerate(score_loader):
                 # get prediction
-                mu_scaled, _ = smavra(epoch)
+                h_t, latent, attention_weight, attention, lengths = \
+                    smavra.encode(epoch)
+
+                if explain_latent:
+                    latents.append(latent.squeeze().cpu().detach().numpy())
+
+                if explain_attention:
+                    _, n_heads, _, _ = attention_weight.shape
+                    attention_w = {
+                        j: attention_weight[0, j, :, :].cpu().detach().numpy()
+                        for j in range(n_heads)
+                    }
+                    attention_weights[i] = attention_w
+                # ----------------------------------------------------
+                # decoder
+                mu_scaled, _ = smavra.decode(h_t, latent, attention, lengths)
                 # reshape params
                 batch, seq, fe = mu_scaled.shape
                 # move it back to cpu
@@ -167,10 +227,13 @@ def predict_smavra(
                 mu_scaled = mu_scaled.view(
                     batch * seq, fe).cpu().detach().numpy()
 
-                predictions = np.concatenate(
-                    [mu_scaled, mu, epoch_mse, t_mse,  m_se], axis=1)
+                epoch_id = np.repeat([[i]], repeats=batch * seq, axis=0)
 
-                colnames = [f"{_}_mu_scaled" for _ in column_order] \
+                predictions = np.concatenate(
+                    [epoch_id, mu_scaled, mu, epoch_mse, t_mse, m_se], axis=1)
+
+                colnames = ["epoch_id"] \
+                    + [f"{_}_mu_scaled" for _ in column_order] \
                     + [f"{_}_mu" for _ in column_order] \
                     + ["epoch_mse", "t_mse"] \
                     + [f"{_}_se" for _ in column_order]
@@ -188,12 +251,35 @@ def predict_smavra(
 
         preds = pd.concat([pred_df, preds], axis=1)
 
+        # write predicitons
         table = pa.Table.from_pandas(preds)
         file_name = os.path.basename(score_file_path)
         pq.write_table(
             table,
-            os.path.join(output_dir, file_name)
+            os.path.join(output_score_dir, file_name)
         )
+
+        # EXPLAINABILITY
+        # write latent
+        if explain_latent:
+            with open(
+                os.path.join(
+                    output_explain_latent_dir,
+                    os.path.basename(score_file_path) + ".pkl"
+                ),
+                "wb"
+            ) as f:
+                pk.dump(np.stack(latents, 0), f)
+        # write attention
+        if explain_attention:
+            with open(
+                os.path.join(
+                    output_explain_attention_dir,
+                    os.path.basename(score_file_path) + ".pkl"
+                ),
+                "wb"
+            ) as f:
+                pk.dump(attention_weights, f)
 
 
 if __name__ == '__main__':

@@ -169,32 +169,34 @@ class Variational(nn.Module):
 class MultiHeadAttention(nn.Module):
     """Multihead self-attention"""
 
-    def __init__(self, hidden_size: int, n_heads: int,
+    def __init__(self, hidden_size: int, attention_size: int, n_heads: int,
                  dropout: float, device: str):
         """Constructor
 
         Args:
             hidden_size (int): hidden size of the input.
+            attention_size (int): attention size
             n_heads (int): number of heads (attention heads)
             dropout (double): dropout rate
             device (string): cuda or cpu
         """
         super().__init__()
 
-        assert hidden_size % n_heads == 0
+        assert attention_size % n_heads == 0
 
         # init values
         self.hidden_size = hidden_size
         self.n_heads = n_heads
-        self.head_size = hidden_size // n_heads
+        self.head_size = attention_size // n_heads
+        self.attention_size = attention_size
 
         # linear layers
-        self.hidden_to_query = nn.Linear(hidden_size, hidden_size)
-        self.hidden_to_key = nn.Linear(hidden_size, hidden_size)
-        self.hidden_to_value = nn.Linear(hidden_size, hidden_size)
+        self.hidden_to_query = nn.Linear(hidden_size, attention_size)
+        self.hidden_to_key = nn.Linear(hidden_size, attention_size)
+        self.hidden_to_value = nn.Linear(hidden_size, attention_size)
 
         # potentially remove
-        self.z_to_output = nn.Linear(hidden_size, hidden_size)
+        self.z_to_output = nn.Linear(attention_size, hidden_size)
 
         # dropout
         self.dropout = nn.Dropout(dropout)
@@ -297,7 +299,7 @@ class MultiHeadAttention(nn.Module):
         # x = [batch size, seq len, n heads, head dim]
 
         # put x into same form as input
-        x = x.view(batch_size, -1, self.hidden_size)
+        x = x.view(batch_size, -1, self.attention_size)
 
         # x = [batch size, seq len, hid dim]
 
