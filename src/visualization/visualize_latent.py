@@ -15,18 +15,19 @@ for p in Path(latent_dir).iterdir():
 
 
 latents = np.concatenate(latents, 0)
-col_names = [
+latent_cols = [
     f"latent_{i}" for i in range(
-        latents.shape[1])
+        latents.shape[1]-1)
 ]
+epoch_loss = ["epoch_loss"]
 n_components = 3
 
 df = pd.DataFrame(
-    latents, columns=col_names)
+    latents, columns=latent_cols + epoch_loss)
 
 
 pca = PCA(n_components=n_components)
-components = pca.fit_transform(df)
+components = pca.fit_transform(df[latent_cols])
 
 total_var = pca.explained_variance_ratio_.sum() * 100
 
@@ -35,7 +36,7 @@ labels['color'] = 'Median Price'
 
 fig = px.scatter_matrix(
     components,
-    # color=boston.target,
+    color=df.epoch_loss,
     dimensions=range(n_components),
     labels=labels,
     title=f'Total Explained Variance: {total_var:.2f}%',

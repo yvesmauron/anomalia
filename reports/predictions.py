@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format=log_fmt)
 logger = logging.getLogger(__name__)
 
 report_figures_path = Path("reports/figures")
-scored_path = Path("data/scored/resmed")
+scored_path = Path("data/output/score")
 if report_figures_path.exists():
     shutil.rmtree(report_figures_path)
 
@@ -36,7 +36,7 @@ for session in sessions:
     logging.info(f"Report session: {session}")
 
     df = pq.read_table(
-        f"data/scored/resmed/{session}_0_HRD.edf.parquet").to_pandas()
+        f"data/output/score/{session}_0_HRD.edf.parquet").to_pandas()
     df = df.loc[df["delivered_volum"] > -32768, :]
 
     # subplot -----

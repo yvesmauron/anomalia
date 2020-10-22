@@ -24,7 +24,6 @@ import pickle as pk
 @click.command()
 @click.option(
     '--run_id',
-    default="352ad2d8d5994814b0ed9da88bc3951c",
     type=click.STRING,
     help="run id from mlflow experiment. check mlflow ui."
 )
@@ -185,9 +184,6 @@ def predict_smavra(
                 h_t, latent, attention_weight, attention, lengths = \
                     smavra.encode(epoch)
 
-                if explain_latent:
-                    latents.append(latent.squeeze().cpu().detach().numpy())
-
                 if explain_attention:
                     _, n_heads, _, _ = attention_weight.shape
                     attention_w = {
@@ -200,13 +196,25 @@ def predict_smavra(
                 mu_scaled, _ = smavra.decode(h_t, latent, attention, lengths)
                 # reshape params
                 batch, seq, fe = mu_scaled.shape
-                # move it back to cpu
+
                 # mse of epoch
+                epoch_mse = torch.pow(
+                    (mu_scaled - epoch),
+                    2
+                ).mean(axis=(1, 2)).cpu().detach().numpy()
+
+                if explain_latent:
+                    latents.append(
+                        np.append(
+                            arr=latent.squeeze().cpu().detach().numpy(),
+                            values=[
+                                epoch_mse
+                            ]
+                        )
+                    )
+
                 epoch_mse = np.repeat(
-                    torch.pow(
-                        (mu_scaled - epoch),
-                        2
-                    ).mean(axis=(1, 2)).cpu().detach().numpy(),
+                    epoch_mse,
                     seq_len
                 )
                 epoch_mse = epoch_mse.reshape(batch * seq, 1)

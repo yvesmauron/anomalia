@@ -108,7 +108,7 @@ def train_smavra(
         'output_size': 1 if TEST_MODE else 3,
         'num_layers': 1 if TEST_MODE else 2,
         'n_heads': 1 if TEST_MODE else 2,
-        'dropout': 0.25,
+        'dropout': 0.5,
         'batch_first': True,
         'cuda': USE_CUDA,
         'mode': 'static',
@@ -175,7 +175,7 @@ def train_smavra(
         kld_annealing_start_epoch=0,
         kld_annealing_max=0.5,
         kld_annealing_intervals=[15, 25, 5],
-        kld_latent_loss_weight=.05,
+        kld_latent_loss_weight=.005,
         kld_attention_loss_weight=.03
     )
 
