@@ -104,7 +104,7 @@ def train_smavra(
         'input_size': 1 if TEST_MODE else 3,
         'hidden_size': 10 if TEST_MODE else 64,
         'latent_size': 1 if TEST_MODE else 16,
-        'attention_size': 1 if TEST_MODE else 2,  # not supported anymore
+        'attention_size': 1 if TEST_MODE else 2,
         'output_size': 1 if TEST_MODE else 3,
         'num_layers': 1 if TEST_MODE else 2,
         'n_heads': 1 if TEST_MODE else 2,

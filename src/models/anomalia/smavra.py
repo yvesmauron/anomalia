@@ -25,6 +25,8 @@ class SMAVRA(nn.Module):
         reconstruction_loss_function: str = 'MSELoss',
         mode: str = 'dynamic',
         rnn_type: str = 'LSTM',
+        use_epoch_latent: bool = False,
+        seq_len: int = None,
         use_variational_attention: bool = True,
         use_proba_output: bool = False
     ):
@@ -76,8 +78,15 @@ class SMAVRA(nn.Module):
         self.reconstruction_loss_function = reconstruction_loss_function
         self.mode = mode
         self.rnn_type = rnn_type
+        self.use_epoch_latent = use_epoch_latent
+        self.seq_len = seq_len
         self.use_variational_attention = use_variational_attention
         self.use_proba_output = use_proba_output
+
+        if self.use_epoch_latent and self.seq_len is None:
+            raise ValueError(
+                "You must define sequence length uf use_epoch_latent is true."
+            )
 
         # set up layer architecture
         # 1.) encoder
@@ -90,8 +99,11 @@ class SMAVRA(nn.Module):
         )
         # ----------------------------------------------------
         # 2.) variational - latent space
+        vl_size = self.hidden_size \
+            if not self.use_epoch_latent \
+            else self.hidden_size * self.seq_len
         self.variational_latent = Variational(
-            hidden_size=self.hidden_size,
+            hidden_size=vl_size,
             latent_size=self.latent_size
         )
         # ----------------------------------------------------
@@ -113,14 +125,14 @@ class SMAVRA(nn.Module):
             # ----------------------------------------------------
             # 4.) Variational - self attention
             self.variational_attention = Variational(
-                hidden_size=self.hidden_size,
-                latent_size=self.hidden_size,  # attention size not supported
+                hidden_size=self.attention_size,
+                latent_size=self.attention_size,
                 use_identity=True
             )
             # ----------------------------------------------------
         # 5.) Decoder --> todo #self.attention_size??
         self.decoder = Decoder(
-            input_size=self.latent_size + self.hidden_size,
+            input_size=self.latent_size + self.attention_size,
             hidden_size=self.output_size,
             num_layers=self.num_layers,
             batch_first=self.batch_first,
@@ -195,7 +207,10 @@ class SMAVRA(nn.Module):
 
         # ----------------------------------------------------
         # latent space
-        latent = self.variational_latent(h_end_out)
+        vl_in = h_end_out \
+            if not self.use_epoch_latent \
+            else torch.flatten(h_t)
+        latent = self.variational_latent(vl_in)
 
         # ----------------------------------------------------
         # attention
