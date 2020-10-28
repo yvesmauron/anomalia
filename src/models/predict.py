@@ -100,11 +100,11 @@ def predict_smavra(
 
     logger.info("Preparing directory structure.")
     # clean up output_dir
-    output_score_dir = Path(os.path.join(output_dir, "score"))
+    output_score_dir = Path(os.path.join(output_dir, "score", run_id))
     output_explain_latent_dir = Path(
-        os.path.join(output_dir, "explain", "latent"))
+        os.path.join(output_dir, "explain", "latent", run_id))
     output_explain_attention_dir = Path(
-        os.path.join(output_dir, "explain", "attention"))
+        os.path.join(output_dir, "explain", "attention", run_id))
 
     # remove directories if they exist
     if output_score_dir.exists():
@@ -204,13 +204,23 @@ def predict_smavra(
                 ).mean(axis=(1, 2)).cpu().detach().numpy()
 
                 if explain_latent:
+                    lat = np.append(
+                        arr=latent.squeeze().cpu().detach().numpy(),
+                        values=[
+                            epoch_mse
+                        ]
+                    )
+                    latent_cols = [
+                        f"latent_{i}" for i in range(
+                            latents.shape[1] - 1)
+                    ]
+                    df = pd.DataFrame(
+                        lat, columns=latent_cols + ["epoch_loss"]
+                    )
+
+                    df["file_name"] = os.path.basename(score_file_path)[:15]
                     latents.append(
-                        np.append(
-                            arr=latent.squeeze().cpu().detach().numpy(),
-                            values=[
-                                epoch_mse
-                            ]
-                        )
+                        df
                     )
 
                 epoch_mse = np.repeat(
@@ -270,14 +280,16 @@ def predict_smavra(
         # EXPLAINABILITY
         # write latent
         if explain_latent:
-            with open(
-                os.path.join(
-                    output_explain_latent_dir,
-                    os.path.basename(score_file_path) + ".pkl"
-                ),
-                "wb"
-            ) as f:
-                pk.dump(np.stack(latents, 0), f)
+            table = pa.Table.from_pandas(pd.concat(latents, axis=1))
+            file_name = os.path.join(
+                output_explain_latent_dir,
+                os.path.basename(score_file_path)
+            )
+            pq.write_table(
+                table,
+                file_name
+            )
+
         # write attention
         if explain_attention:
             with open(
