@@ -125,14 +125,14 @@ class SMAVRA(nn.Module):
             # ----------------------------------------------------
             # 4.) Variational - self attention
             self.variational_attention = Variational(
-                hidden_size=self.attention_size,
-                latent_size=self.attention_size,
+                hidden_size=self.hidden_size,
+                latent_size=self.hidden_size,
                 use_identity=True
             )
             # ----------------------------------------------------
         # 5.) Decoder --> todo #self.attention_size??
         self.decoder = Decoder(
-            input_size=self.latent_size + self.attention_size,
+            input_size=self.latent_size + self.hidden_size,
             hidden_size=self.output_size,
             num_layers=self.num_layers,
             batch_first=self.batch_first,
@@ -209,7 +209,7 @@ class SMAVRA(nn.Module):
         # latent space
         vl_in = h_end_out \
             if not self.use_epoch_latent \
-            else torch.flatten(h_t)
+            else torch.flatten(h_t, start_dim=1)
         latent = self.variational_latent(vl_in)
 
         # ----------------------------------------------------

@@ -113,6 +113,8 @@ def train_smavra(
         'cuda': USE_CUDA,
         'mode': 'static',
         'rnn_type': 'LSTM',
+        'seq_len': 750,
+        'use_epoch_latent': True,
         'use_variational_attention': True,
         'use_proba_output': False
     }
@@ -175,7 +177,7 @@ def train_smavra(
         kld_annealing_start_epoch=0,
         kld_annealing_max=0.5,
         kld_annealing_intervals=[15, 25, 5],
-        kld_latent_loss_weight=.005,
+        kld_latent_loss_weight=.002,
         kld_attention_loss_weight=.03
     )
 
