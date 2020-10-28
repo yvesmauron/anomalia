@@ -25,7 +25,8 @@ import pickle as pk
 @click.option(
     '--run_id',
     type=click.STRING,
-    help="run id from mlflow experiment. check mlflow ui."
+    help="run id from mlflow experiment. check mlflow ui.",
+    default="ecc7cf3c9c424adc9641337a9868ed5e"
 )
 @click.option(
     '--input_dir',
@@ -204,23 +205,14 @@ def predict_smavra(
                 ).mean(axis=(1, 2)).cpu().detach().numpy()
 
                 if explain_latent:
-                    lat = np.append(
-                        arr=latent.squeeze().cpu().detach().numpy(),
-                        values=[
-                            epoch_mse
-                        ]
-                    )
-                    latent_cols = [
-                        f"latent_{i}" for i in range(
-                            latents.shape[1] - 1)
-                    ]
-                    df = pd.DataFrame(
-                        lat, columns=latent_cols + ["epoch_loss"]
-                    )
-
-                    df["file_name"] = os.path.basename(score_file_path)[:15]
                     latents.append(
-                        df
+                        np.append(
+                            arr=latent.squeeze().cpu().detach().numpy(),
+                            values=[
+                                epoch_mse,
+                                i
+                            ]
+                        )
                     )
 
                 epoch_mse = np.repeat(
@@ -280,7 +272,18 @@ def predict_smavra(
         # EXPLAINABILITY
         # write latent
         if explain_latent:
-            table = pa.Table.from_pandas(pd.concat(latents, axis=1))
+            latents = np.stack(latents, 0)
+            latent_cols = [
+                f"latent_{i}" for i in range(
+                    latents.shape[1] - 2)
+            ]
+            df = pd.DataFrame(
+                latents, columns=latent_cols + ["epoch_loss", "epoch"]
+            )
+
+            df["file_name"] = os.path.basename(score_file_path)[:15]
+            table = pa.Table.from_pandas(df)
+
             file_name = os.path.join(
                 output_explain_latent_dir,
                 os.path.basename(score_file_path)
