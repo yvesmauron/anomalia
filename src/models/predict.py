@@ -14,11 +14,113 @@ from dotenv import find_dotenv, load_dotenv
 
 from src.models.anomalia.datasets import ResmedDatasetEpoch
 from src.features.build_features import reshape_resmed_tensor
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 import torch
 import pyarrow.parquet as pq
 import pyarrow as pa
 import pickle as pk
+
+
+def predict_file(
+    model: torch.nn.Module,
+    dataset: Dataset,
+    file_path: str,
+    explain_latent,
+    explain_attention,
+    seq_len: int,
+    column_order: list
+):
+    score_loader = DataLoader(
+        dataset,
+        batch_size=1,
+        shuffle=False,
+    )
+
+    preds = []
+    latents = []
+    attention_weights = {}
+
+    with tqdm(
+        total=len(score_loader),
+        bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
+        ascii=True
+    ) as pbar:
+        pbar.set_postfix(file=file_path)
+        for i, epoch in enumerate(score_loader):
+            # get prediction
+            h_t, latent, attention_weight, attention, lengths = \
+                model.encode(epoch)
+
+            if explain_attention:
+                _, n_heads, _, _ = attention_weight.shape
+                attention_w = {
+                    j: attention_weight[0, j, :, :].cpu().detach().numpy()
+                    for j in range(n_heads)
+                }
+                attention_weights[i] = attention_w
+            # ----------------------------------------------------
+            # decoder
+            mu_scaled, _ = model.decode(h_t, latent, attention, lengths)
+            # reshape params
+            batch, seq, fe = mu_scaled.shape
+
+            # mse of epoch
+            epoch_mse = torch.pow(
+                (mu_scaled - epoch),
+                2
+            ).mean(axis=(1, 2)).cpu().detach().numpy()
+
+            if explain_latent:
+                latents.append(
+                    np.append(
+                        arr=latent.squeeze().cpu().detach().numpy(),
+                        values=[
+                            epoch_mse,
+                            i
+                        ]
+                    )
+                )
+
+            epoch_mse = np.repeat(
+                epoch_mse,
+                seq_len
+            )
+            epoch_mse = epoch_mse.reshape(batch * seq, 1)
+            # mse of timestep
+            t_mse = torch.pow(
+                (mu_scaled - epoch),
+                2
+            ).mean(axis=(2)).cpu().detach().numpy()
+            t_mse = t_mse.reshape(batch * seq, 1)
+
+            # se of timestep and measure
+            m_se = torch.pow((mu_scaled - epoch), 2)
+            m_se = m_se.view(batch * seq, fe).cpu().detach().numpy()
+
+            mu = dataset.backtransform(mu_scaled.view(
+                batch * seq, fe).cpu().detach()).squeeze(0).numpy()
+
+            mu_scaled = mu_scaled.view(
+                batch * seq, fe).cpu().detach().numpy()
+
+            epoch_id = np.repeat([[i]], repeats=batch * seq, axis=0)
+
+            predictions = np.concatenate(
+                [epoch_id, mu_scaled, mu, epoch_mse, t_mse, m_se], axis=1)
+
+            colnames = ["epoch_id"] \
+                + [f"{_}_mu_scaled" for _ in column_order] \
+                + [f"{_}_mu" for _ in column_order] \
+                + ["epoch_mse", "t_mse"] \
+                + [f"{_}_se" for _ in column_order]
+
+            predictions = pd.DataFrame(predictions, columns=colnames)
+
+            preds.append(predictions)
+
+            pbar.update(1)
+
+    return preds, latents, attention_weights
 
 
 @click.command()
@@ -163,96 +265,15 @@ def predict_smavra(
             means=torch.Tensor(preprocessing_config["means"]),
             stds=torch.Tensor(preprocessing_config["stds"])
         )
-
-        score_loader = DataLoader(
-            score_dataset,
-            batch_size=1,
-            shuffle=False,
+        preds, latents, attention_weights = predict_file(
+            model=smavra,
+            dataset=score_dataset,
+            file_path=score_file_path,
+            explain_latent=explain_latent,
+            explain_attention=explain_attention,
+            seq_len=seq_len,
+            column_order=column_order
         )
-
-        preds = []
-        latents = []
-        attention_weights = {}
-
-        with tqdm(
-            total=len(score_loader),
-            bar_format="{desc:<5.5}{percentage:3.0f}%|{bar:100}{r_bar}",
-            ascii=True
-        ) as pbar:
-            pbar.set_postfix(file=score_file_path)
-            for i, epoch in enumerate(score_loader):
-                # get prediction
-                h_t, latent, attention_weight, attention, lengths = \
-                    smavra.encode(epoch)
-
-                if explain_attention:
-                    _, n_heads, _, _ = attention_weight.shape
-                    attention_w = {
-                        j: attention_weight[0, j, :, :].cpu().detach().numpy()
-                        for j in range(n_heads)
-                    }
-                    attention_weights[i] = attention_w
-                # ----------------------------------------------------
-                # decoder
-                mu_scaled, _ = smavra.decode(h_t, latent, attention, lengths)
-                # reshape params
-                batch, seq, fe = mu_scaled.shape
-
-                # mse of epoch
-                epoch_mse = torch.pow(
-                    (mu_scaled - epoch),
-                    2
-                ).mean(axis=(1, 2)).cpu().detach().numpy()
-
-                if explain_latent:
-                    latents.append(
-                        np.append(
-                            arr=latent.squeeze().cpu().detach().numpy(),
-                            values=[
-                                epoch_mse,
-                                i
-                            ]
-                        )
-                    )
-
-                epoch_mse = np.repeat(
-                    epoch_mse,
-                    seq_len
-                )
-                epoch_mse = epoch_mse.reshape(batch * seq, 1)
-                # mse of timestep
-                t_mse = torch.pow(
-                    (mu_scaled - epoch),
-                    2
-                ).mean(axis=(2)).cpu().detach().numpy()
-                t_mse = t_mse.reshape(batch * seq, 1)
-
-                # se of timestep and measure
-                m_se = torch.pow((mu_scaled - epoch), 2)
-                m_se = m_se.view(batch * seq, fe).cpu().detach().numpy()
-
-                mu = score_dataset.backtransform(mu_scaled.view(
-                    batch * seq, fe).cpu().detach()).squeeze(0).numpy()
-
-                mu_scaled = mu_scaled.view(
-                    batch * seq, fe).cpu().detach().numpy()
-
-                epoch_id = np.repeat([[i]], repeats=batch * seq, axis=0)
-
-                predictions = np.concatenate(
-                    [epoch_id, mu_scaled, mu, epoch_mse, t_mse, m_se], axis=1)
-
-                colnames = ["epoch_id"] \
-                    + [f"{_}_mu_scaled" for _ in column_order] \
-                    + [f"{_}_mu" for _ in column_order] \
-                    + ["epoch_mse", "t_mse"] \
-                    + [f"{_}_se" for _ in column_order]
-
-                predictions = pd.DataFrame(predictions, columns=colnames)
-
-                preds.append(predictions)
-
-                pbar.update(1)
 
         if len(preds) > 1:
             preds = pd.concat(preds, ignore_index=True)

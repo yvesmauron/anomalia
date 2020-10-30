@@ -30,7 +30,7 @@ class SMAVRA(nn.Module):
         use_variational_attention: bool = True,
         use_proba_output: bool = False
     ):
-        """[summary]
+        """Creates a SMAVRA network
 
         Args:
             input_size (int): size of input features per time step
@@ -52,6 +52,10 @@ class SMAVRA(nn.Module):
                 Defaults to 'dynamic'.
             rnn_type (str, optional): type of rnn to use.
                 Defaults to 'LSTM'.
+            use_epoch_latent (bool, optional): if h_t is used for
+                latent vector or not. Defaults to 'False'.
+            seq_len (int, optional): length of input sequence.
+                Defaults to 'None'.
             use_variational_attention (bool, optional): whether to use
                 variational attention or not.
                     Defaults to True.

@@ -1,5 +1,3 @@
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import pyarrow.parquet as pq
 import shutil
 from pathlib import Path
@@ -8,6 +6,12 @@ import logging
 import click
 from dotenv import find_dotenv, load_dotenv
 from tqdm import tqdm
+import src.visualization.visualize_attention as viz
+atts = viz.visualize_attention(
+    run_id="4377a3ad68e84162827255bc1a0b7e40",
+    session="20200930_120001",
+    epoch_nr=361
+)
 
 
 @click.command()
@@ -17,7 +21,7 @@ from tqdm import tqdm
     help="run id from mlflow experiment. check mlflow ui.",
     default="d61422fcea4c4e6e913049b9149fbe68"
 )
-def visualize_latent(
+def visualize_predictions(
     run_id: str
 ):
 
@@ -68,149 +72,10 @@ def visualize_latent(
             ).to_pandas()
             df = df.loc[df["delivered_volum"] > -32768, :]
 
-            # subplot -----
-            fig = make_subplots(
-                rows=4,
-                cols=1,
-                shared_xaxes=True,
-                vertical_spacing=0.02,
-                subplot_titles=("Resp Flow", "Delivered Volume",
-                                "Mask Pressure", "Anomaly Score")
-            )
-
-            # error -----
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.mask_press_se,
-                    mode='lines',
-                    name='Scaled SE MaskPressure',
-                    line=dict(
-                        color=color_palette["se_mask_pres"]
-                    )
-                ),
-                row=4,
-                col=1
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.delivered_volum_se,
-                    mode='lines',
-                    name='Scaled SE Deliveredvolume',
-                    line=dict(
-                        color=color_palette["se_deli_volu"]
-                    )
-                ),
-                row=4,
-                col=1
-            )
-
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.resp_flow_se,
-                    mode='lines',
-                    name='Scaled SE RespFlow',
-                    line=dict(
-                        color=color_palette["se_resp_flow"]
-                    )
-                ),
-                row=4,
-                col=1
-            )
-
-            # Mask Pressure -----
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.mask_press,
-                    mode='lines',
-                    name='Mask Pressure (True)',
-                    line=dict(
-                        color=color_palette["true"]
-                    )
-                ),
-                row=3,
-                col=1
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.mask_press_mu,
-                    mode='lines',
-                    name='Mask Pressure (Predicted)',
-                    line=dict(
-                        color=color_palette["mask_pres"]
-                    )
-                ),
-                row=3,
-                col=1
-            )
-
-            # Delivered Volume -----
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.delivered_volum,
-                    mode='lines',
-                    name='Delivered Volume (True)',
-                    line=dict(
-                        color=color_palette["true"]
-                    )
-                ),
-                row=2,
-                col=1
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.delivered_volum_mu,
-                    mode='lines',
-                    name='Delivered Volume (Predicted)',
-                    line=dict(
-                        color=color_palette["deli_volu"]
-                    )
-                ),
-                row=2,
-                col=1
-            )
-
-            # Respiration Flow -----
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.resp_flow,
-                    mode='lines',
-                    name='Resp Flow (True)',
-                    line=dict(
-                        color=color_palette["true"]
-                    )
-                ),
-                row=1,
-                col=1
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=df.timestamp,
-                    y=df.resp_flow_mu,
-                    mode='lines',
-                    name='Resp Flow (Predicted)',
-                    line=dict(
-                        color=color_palette["resp_flow"]
-                    )
-                ),
-                row=1,
-                col=1
-            )
-
-            fig.update_layout(
-                title_text=f"Session example: {session}",
-                legend_title="Legend Title",
-                font=dict(
-                    family="Courier New, monospace",
-                    size=18
-                )
+            fig = viz.plot_signals(
+                session,
+                df,
+                color_palette
             )
 
             fig.write_html(
@@ -232,5 +97,5 @@ if __name__ == '__main__':
     # load up the .env entries as environment variables
     load_dotenv(find_dotenv())
 
-    ##
-    visualize_latent()
+    #
+    _ = visualize_predictions()
