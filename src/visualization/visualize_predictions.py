@@ -44,16 +44,6 @@ def visualize_predictions(
 
     scored_path = Path(os.path.join("data", "output", "score", run_id))
 
-    color_palette = {
-        "resp_flow": "rgba(247, 201, 77, 1)",
-        "deli_volu": "rgba(64, 145, 182, 1)",
-        "mask_pres": "rgba(105, 173, 82, 1)",
-        "true": "rgba(0, 0, 0, 1)",
-        "se_resp_flow": "rgba(247, 201, 77, 1)",
-        "se_deli_volu": "rgba(64, 145, 182, 1)",
-        "se_mask_pres": "rgba(105, 173, 82, 1)",
-    }
-
     sessions = [str(os.path.basename(p))[:15] for p in scored_path.iterdir()]
 
     logger.info(
@@ -74,8 +64,7 @@ def visualize_predictions(
 
             fig = viz.plot_signals(
                 session,
-                df,
-                color_palette
+                df
             )
 
             fig.write_html(

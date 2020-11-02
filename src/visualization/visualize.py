@@ -29,7 +29,15 @@ logger = logging.getLogger("visualization")
 def plot_signals(
     session: str,
     df: pd.DataFrame,
-    color_palette: dict
+    color_palette: dict = {
+        "resp_flow": "rgba(247, 201, 77, 1)",
+        "deli_volu": "rgba(64, 145, 182, 1)",
+        "mask_pres": "rgba(105, 173, 82, 1)",
+        "true": "rgba(0, 0, 0, 1)",
+        "se_resp_flow": "rgba(247, 201, 77, 1)",
+        "se_deli_volu": "rgba(64, 145, 182, 1)",
+        "se_mask_pres": "rgba(105, 173, 82, 1)",
+    }
 ):
 
     # subplot -----
