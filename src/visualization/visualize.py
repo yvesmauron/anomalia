@@ -178,20 +178,63 @@ def plot_signals(
 
     fig.update_layout(
         title_text=f"Session example: {session}",
-        legend_title="Legend Title",
-        font=dict(
-            family="Courier New, monospace",
-            size=18
-        )
+        legend_title="Reconstruction"
+        # font=dict(
+        #family="Courier New, monospace",
+        # size=18
+        # )
     )
 
     return fig
 
 
+def latent_pca_data(
+    run_id: str,
+    pca_components: int = 3,
+):
+    logger = logging.getLogger(__name__)
+
+    # get mlflow client
+    mlflow_client = MlflowClient()
+    # get run to be explained
+    data = mlflow_client.get_run(run_id).data
+    # get latent size
+    latent_size = int(data.params["latent_size"])
+
+    # read from directory
+    latent_dir = os.path.join("data/output/explain/latent", run_id)
+    latents = []
+
+    for p in Path(latent_dir).iterdir():
+        table = pq.read_table(p)
+        latents.append(table.to_pandas())
+
+    df = pd.concat(latents, axis=0)
+
+    # PCA
+    logger.info(f"Creating PCA with {pca_components} components.")
+
+    # fit pca
+    pca = PCA(n_components=pca_components)
+    components = pca.fit_transform(df.iloc[:, :latent_size])
+
+    # create df for visualization
+    pca_columns = [f"PC{i+1}" for i in range(pca_components)]
+    components = pd.DataFrame(
+        components, columns=pca_columns
+
+    ).reset_index()
+
+    explained = pca.explained_variance_ratio_.sum() * 100
+
+    return df, components, explained
+
+
 def plot_latent(
     run_id: str,
     pca_components: int = 3,
-    tsne_components: int = 2
+    tsne_components: int = 2,
+    compute_tsne: bool = False
 ):
     logger = logging.getLogger(__name__)
 
@@ -246,25 +289,30 @@ def plot_latent(
     )
     pca_fig.update_traces(diagonal_visible=False)
 
-    # TSNE
-    logger.info(f"Creating TSNE with {tsne_components} components.")
-    tsne = TSNE(n_components=tsne_components, random_state=0)
-    projections = tsne.fit_transform(df.iloc[:, :latent_size])
+    if compute_tsne:
+        # TSNE
+        logger.info(f"Creating TSNE with {tsne_components} components.")
+        tsne = TSNE(n_components=tsne_components, random_state=0)
+        projections = tsne.fit_transform(df.iloc[:, :latent_size])
 
-    projections = pd.DataFrame(projections, columns=["P1", "P2"]).reset_index()
-    projections = pd.concat(
-        [df.iloc[:, latent_size:].reset_index(), projections], axis=1)
+        projections = pd.DataFrame(
+            projections, columns=[
+                "P1", "P2"]).reset_index()
+        projections = pd.concat(
+            [df.iloc[:, latent_size:].reset_index(), projections], axis=1)
 
-    tsne_fig = px.scatter(
-        projections, x="P1", y="P2",
-        color=np.log(df.epoch_loss.astype("float")),
-        labels={'color': 'loc(epoch_loss)'},
-        title=f'Run: {run_id}',
-        hover_name="file_name",
-        hover_data=["epoch_loss", "epoch"]
-    )
+        tsne_fig = px.scatter(
+            projections, x="P1", y="P2",
+            color=np.log(df.epoch_loss.astype("float")),
+            labels={'color': 'loc(epoch_loss)'},
+            title=f'Run: {run_id}',
+            hover_name="file_name",
+            hover_data=["epoch_loss", "epoch"]
+        )
 
-    return pca_fig, tsne_fig
+        return pca_fig, tsne_fig
+    else:
+        return pca_fig, None
 
 
 def epoch_attention(
