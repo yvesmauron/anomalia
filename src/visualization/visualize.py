@@ -46,8 +46,8 @@ def plot_signals(
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.02,
-        subplot_titles=("Resp Flow", "Delivered Volume",
-                        "Mask Pressure", "Anomaly Score")
+        row_titles=("Resp Flow", "Delivered Volume",
+                    "Mask Pressure", "Anomaly Score")
     )
 
     # error -----
@@ -178,9 +178,16 @@ def plot_signals(
 
     fig.update_layout(
         title_text=f"Session example: {session}",
-        legend_title="Reconstruction"
+        legend_title=None,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-.15,
+            xanchor="right",
+            x=1
+        )
         # font=dict(
-        #family="Courier New, monospace",
+        # family="Courier New, monospace",
         # size=18
         # )
     )

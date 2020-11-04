@@ -3,16 +3,23 @@ import src.visualization.visualize as viz
 from mlflow.tracking import MlflowClient
 from datetime import datetime
 import dash
-from dash.dependencies import Input, Output, State, ClientsideFunction
+from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
-import plotly
 import locale
 import numpy as np
 import copy
 import json
+from pathlib import Path
+import pandas as pd
+from scipy import stats
+
+import pyarrow.parquet as pq
+import os
 locale.setlocale(locale.LC_ALL, '')
 
+git_repo = "https://github.com/yvesmauron/time-series-anomaly-detection/tree"
+mlflow_tracking_server = "http://127.0.0.1:5000/#/experiments"
 
 external_stylesheets = ['assets/style_2.css', 'assets/style.css']
 
@@ -52,12 +59,20 @@ app.scripts.config.serve_locally = True
 
 app.layout = html.Div(
     [
+        html.Div(id='hdiv_epoch_mu', style={"display": "none"}),
+        html.Div(id='hdiv_epoch_std', style={"display": "none"}),
+        html.Div(id='hdiv_maskpres_mu', style={"display": "none"}),
+        html.Div(id='hdiv_maskpres_std', style={"display": "none"}),
+        html.Div(id='hdiv_delivol_mu', style={"display": "none"}),
+        html.Div(id='hdiv_delivol_std', style={"display": "none"}),
+        html.Div(id='hdiv_respflow_mu', style={"display": "none"}),
+        html.Div(id='hdiv_respflow_std', style={"display": "none"}),
         build_header(app),
         html.Div(
             [
                 html.Div(
                     [
-                        html.H5(
+                        html.H6(
                             'Filter by run start date:',
                             className="control_label"
                         ),
@@ -93,7 +108,7 @@ app.layout = html.Div(
                                     id="link_github",
                                     href=""
                                 ),
-                                html.P("Git Commit")
+                                html.P("Git")
                             ],
                             id="git_commit",
                             className="mini_container two columns",
@@ -109,7 +124,7 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.H6(id="tile_recon_loss"),
-                                html.P("Reconstruction Loss")
+                                html.P("Recon Loss")
                             ],
                             id="recon_loss",
                             className="mini_container two columns",
@@ -117,7 +132,7 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.H6(id="tile_kld_latent"),
-                                html.P("KLD Latent Loss")
+                                html.P("KLD Latent")
                             ],
                             id="kld_latent",
                             className="mini_container two columns",
@@ -125,7 +140,7 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.H6(id="tile_kld_attention"),
-                                html.P("KLD Attention Loss")
+                                html.P("KLD Attention")
                             ],
                             id="kld_attention",
                             className="mini_container two columns",
@@ -142,13 +157,20 @@ app.layout = html.Div(
             [
                 html.Div([
                     html.Div(
-                        [dcc.Graph(id="g_latent_size")],
-                        className="pretty_container six columns"
+                        html.Div(
+                            [dcc.Graph(id="g_latent_size")],
+                            className="pretty_container"
+                        ),
+                        className="six columns",
+                        style={"margin-left": "0px"}
                     ),
                     html.Div(
-                        [dcc.Graph(id="g_attention")],
-                        className="pretty_container six columns"
-                    )
+                        html.Div(
+                            [dcc.Graph(id="g_attention")],
+                            className="pretty_container"
+                        ),
+                        className="six columns"
+                    ),
                 ],
                     className="twelve columns",
                     id="latent-attention",
@@ -160,14 +182,87 @@ app.layout = html.Div(
         html.Div(
             [
                 html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.H6(id="tile_anomaly_z"),
+                                html.P("Anomaly Z")
+                            ],
+                            id="anomaly_z",
+                            className="mini_container twelve columns",
+                            style={"margin-left": "0px"}
+                        ),
+                        # html.Div(
+                        #     [
+                        #         html.H6(id="tile_anomaly_osvn"),
+                        #         html.P("Anomaly OSVM")
+                        #     ],
+                        #     id="anomaly_osvn",
+                        #     className="mini_container twelve columns",
+                        #     style={"margin-left": "0px"}
+                        # ),
+                        html.Div(
+                            [
+                                html.H6(id="tile_epoch_mse"),
+                                html.P("Epoch MSE")
+                            ],
+                            id="epoch_mse",
+                            className="mini_container twelve columns",
+                            style={"margin-left": "0px"}
+                        ),
+                        html.Div(
+                            [
+                                html.H6(id="tile_epoch_mse_z"),
+                                html.P("Epoch MSE Z")
+                            ],
+                            id="epoch_mse_z",
+                            className="mini_container twelve columns",
+                            style={"margin-left": "0px"}
+                        ),
+                        html.Div(
+                            [
+                                html.H6(id="tile_maskpres_z"),
+                                html.P("MaskPres Z")
+                            ],
+                            id="maskpres_z",
+                            className="mini_container twelve columns",
+                            style={"margin-left": "0px"}
+                        ),
+                        html.Div(
+                            [
+                                html.H6(id="tile_delivol_z"),
+                                html.P("DeliVol Z")
+                            ],
+                            id="delivol_z",
+                            className="mini_container twelve columns",
+                            style={"margin-left": "0px"}
+                        ),
+                        html.Div(
+                            [
+                                html.H6(id="tile_respflow_z"),
+                                html.P("Respflow Z")
+                            ],
+                            id="respflow_z",
+                            className="mini_container twelve columns",
+                            style={"margin-left": "0px"}
+                        ),
+                    ],
+                    className="two columns",
+                    style={
+                        "display": "flex",
+                        "flex-direction": "column",
+                        "margin-left": "0px"}
+                ),
+                html.Div([
                     html.Div(
                         [dcc.Graph(id="g_reconstruction")],
-                        className="pretty_container",
-                    ),
-                    className="twelve columns"
+                        className="pretty_container"
+                    )
+                ],
+                    className="ten columns"
                 )
             ],
-            className="row flex-display",
+            className="column flex-display",
         ),
         html.Div(
             [
@@ -217,7 +312,7 @@ def update_tiles(run_id):
     tags = run_data.tags
     params = run_data.params
     metrics = run_data.metrics
-    experiment = mlflow_client.get_experiment_by_name("SMAVRA")
+    exp = mlflow_client.get_experiment_by_name("SMAVRA")
 
     return(
         [
@@ -225,15 +320,71 @@ def update_tiles(run_id):
             # params['kld_latent_loss_weight'],
             # params['kld_attention_loss_weight'],
             run_id[:6],
-            f"http://127.0.0.1:5000/#/experiments/{experiment.experiment_id}/runs/{run_id}",
+            f"{mlflow_tracking_server}/{exp.experiment_id}/runs/{run_id}",
             tags['mlflow.source.git.commit'][:6],
-            f"https://github.com/yvesmauron/time-series-anomaly-detection/tree/{tags['mlflow.source.git.commit']}",
+            f"{git_repo}/{tags['mlflow.source.git.commit']}",
             params['n_epochs'],
             f"{round(metrics['Reconstruction Loss'], 2):n}",
             f"{round(metrics['KLD-Latent Loss'], 2):n}",
             f"{round(metrics['KLD-Attention Loss'], 2):n}"
         ]
     )
+
+
+@ app.callback(
+    [
+        Output("hdiv_epoch_mu", "children"),
+        Output("hdiv_epoch_std", "children"),
+        Output("hdiv_maskpres_mu", "children"),
+        Output("hdiv_maskpres_std", "children"),
+        Output("hdiv_delivol_mu", "children"),
+        Output("hdiv_delivol_std", "children"),
+        Output("hdiv_respflow_mu", "children"),
+        Output("hdiv_respflow_std", "children")
+    ],
+    [
+        Input("dd_runs", "value")
+    ]
+)
+def update_run_stats(run_id):
+
+    score_dir = os.path.join("data/output/score/", run_id)
+    score = []
+    for p in Path(score_dir).iterdir():
+        df = pq.read_table(
+            p,
+            columns=[
+                "epoch_id",
+                "epoch_mse",
+                "mask_press_se",
+                "resp_flow_se",
+                "delivered_volum_se"
+            ]).to_pandas()
+        df = df \
+            .groupby("epoch_id") \
+            .agg(
+                {
+                    "epoch_mse": "mean",
+                    "mask_press_se": "mean",
+                    "resp_flow_se": "mean",
+                    "delivered_volum_se": "mean"
+                }).reset_index()
+        score.append(df.iloc[:, 1:])
+    df = pd.concat(score, axis=0)
+
+    means = []
+    stds = []
+    for c in df.columns:
+        col_val = df[c].values
+        p = np.percentile(col_val, 95)
+        upper_limit = np.median(col_val) + (3 * p)
+        mu = stats.tmean(col_val, limits=[0, upper_limit])
+        sd = stats.tstd(col_val, limits=[0, upper_limit])
+
+        means.append(mu)
+        stds.append(sd)
+
+    return means + stds
 
 
 @ app.callback(
@@ -275,7 +426,7 @@ def update_latent(run_id):
         customdata=df[["epoch", "file_name"]].values.reshape(-1, 2)
     )
 
-    layout_plot["title"] = f'PCA Latent; Total Explained Variance: {explained:.2f}%'
+    layout_plot["title"] = f'PCA Latent; Explained Variance: {explained:.2f}%'
     layout_plot['clickmode'] = 'event+select'
 
     figure = dict(data=[data], layout=layout_plot)
@@ -308,7 +459,7 @@ def update_attention(clickData, run_id):
         z=attention[0]
     )
     layout_plot = copy.deepcopy(layout)
-    layout_plot["title"] = f'Attention for file {file_name}; Epoch: {int(epoch)}'
+    layout_plot["title"] = f'Attention file {file_name}; Epoch: {int(epoch)}'
 
     figure = dict(data=[data], layout=layout_plot)
     # import plotly.express as px
@@ -318,23 +469,67 @@ def update_attention(clickData, run_id):
 
 
 @ app.callback(
-    Output('g_reconstruction', 'figure'),
+    [
+        Output('g_reconstruction', 'figure'),
+        Output('tile_anomaly_z', 'children'),
+        Output('tile_epoch_mse', 'children'),
+        Output('tile_epoch_mse_z', 'children'),
+        Output('tile_maskpres_z', 'children'),
+        Output('tile_delivol_z', 'children'),
+        Output('tile_respflow_z', 'children')
+    ],
     [
         Input('g_latent_size', 'clickData'),
-        State('dd_runs', 'value')
+        State('dd_runs', 'value'),
+        State("hdiv_epoch_mu", "children"),
+        State("hdiv_epoch_std", "children"),
+        State("hdiv_maskpres_mu", "children"),
+        State("hdiv_maskpres_std", "children"),
+        State("hdiv_delivol_mu", "children"),
+        State("hdiv_delivol_std", "children"),
+        State("hdiv_respflow_mu", "children"),
+        State("hdiv_respflow_std", "children")
     ])
-def update_reconstruction(clickData, run_id):
+def update_reconstruction(
+    clickData,
+    run_id,
+    epoch_mu,
+    epoch_std,
+    maskpres_mu,
+    maskpres_std,
+    delivol_mu,
+    delivol_std,
+    respflow_mu,
+    respflow_std
+):
+    # get click data
     epoch, file_name = clickData["points"][0]["customdata"]
-    from pathlib import Path
 
-    import pyarrow.parquet as pq
-    import os
+    # get dataframe
     scored_path = Path(os.path.join("data", "output", "score", run_id))
     df = pq.read_table(
         os.path.join(scored_path, f"{file_name}_0_HRD.edf.parquet")
     ).to_pandas()
     df = df.loc[df["epoch_id"] == epoch, :]
 
+    # get z values
+    epoch_mse = df["epoch_mse"].values[0]
+    mask_pres = np.mean(df["mask_press_se"].values)
+    resp_flow = np.mean(df["resp_flow_se"].values)
+    deli_vol = np.mean(df["delivered_volum_se"].values)
+
+    epoch_mse_z = (epoch_mse - epoch_mu) / epoch_std
+    mask_pres_z = (mask_pres - maskpres_mu) / maskpres_std
+    deli_vol_z = (deli_vol - delivol_mu) / delivol_std
+    resp_flow_z = (resp_flow - respflow_mu) / respflow_std
+
+    anomaly = (
+        ">97.5% P"
+        if mask_pres_z > 3 or deli_vol_z > 3 or resp_flow_z > 3
+        else "<97.6 P"
+    )
+
+    # get figure
     figure = viz.plot_signals(file_name, df)
 
     figure.update_layout(
@@ -342,12 +537,16 @@ def update_reconstruction(clickData, run_id):
         paper_bgcolor="#F9F9F9",
         height=800
     )
-    # layout_plot = copy.deepcopy(layout)
-    # layout_plot["title"] = f'Reconstruction for file {file_name}; Epoch: {int(epoch)}'
-    # for key, value in layout_plot.items():
-    #     fig_layout[key] = layout_plot[key]
 
-    return figure
+    return(
+        figure,
+        anomaly,
+        round(epoch_mse, 2),
+        round(epoch_mse_z, 2),
+        round(mask_pres_z, 2),
+        round(deli_vol_z, 2),
+        round(resp_flow_z, 2)
+    )
 
 
 if __name__ == '__main__':
