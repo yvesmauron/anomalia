@@ -112,7 +112,6 @@ class SMAVRA(nn.Module):
         )
         # ----------------------------------------------------
         # 3.) Multihead self-attention
-
         # device = 'cuda:0'
         # if not self.use_cuda:
         #     device = 'cpu'

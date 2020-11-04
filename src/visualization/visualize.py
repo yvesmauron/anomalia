@@ -198,6 +198,7 @@ def plot_signals(
 def latent_pca_data(
     run_id: str,
     pca_components: int = 3,
+    test_file_pattern: str = "202010*"
 ):
     logger = logging.getLogger(__name__)
 
@@ -216,14 +217,23 @@ def latent_pca_data(
         table = pq.read_table(p)
         latents.append(table.to_pandas())
 
-    df = pd.concat(latents, axis=0)
+    train = pd.concat(latents, axis=0)
+
+    latents = []
+    for p in Path(latent_dir).glob(test_file_pattern):
+        table = pq.read_table(p)
+        latents.append(table.to_pandas())
+
+    test = pd.concat(latents, axis=0)
 
     # PCA
     logger.info(f"Creating PCA with {pca_components} components.")
 
     # fit pca
     pca = PCA(n_components=pca_components)
-    components = pca.fit_transform(df.iloc[:, :latent_size])
+    pca.fit(train.iloc[:, :latent_size])
+
+    components = pca.transform(test.iloc[:, :latent_size])
 
     # create df for visualization
     pca_columns = [f"PC{i+1}" for i in range(pca_components)]
@@ -234,7 +244,7 @@ def latent_pca_data(
 
     explained = pca.explained_variance_ratio_.sum() * 100
 
-    return df, components, explained
+    return test, components, explained
 
 
 def plot_latent(
