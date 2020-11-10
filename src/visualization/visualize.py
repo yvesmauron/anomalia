@@ -198,7 +198,7 @@ def plot_signals(
 def latent_pca_data(
     run_id: str,
     pca_components: int = 3,
-    test_file_pattern: str = "202010*"
+    test_file_pattern: str = "20201*"
 ):
     logger = logging.getLogger(__name__)
 
@@ -214,17 +214,19 @@ def latent_pca_data(
     latents = []
 
     for p in Path(latent_dir).iterdir():
-        table = pq.read_table(p)
-        latents.append(table.to_pandas())
+        df = pq.read_table(p).to_pandas()
+        latents.append(df)
 
     train = pd.concat(latents, axis=0)
+    train = train.loc[train["epoch_class"] >= 0, :]
 
     latents = []
     for p in Path(latent_dir).glob(test_file_pattern):
-        table = pq.read_table(p)
-        latents.append(table.to_pandas())
+        df = pq.read_table(p).to_pandas()
+        latents.append(df)
 
     test = pd.concat(latents, axis=0)
+    test = test.loc[test["epoch_class"] >= 0, :]
 
     # PCA
     logger.info(f"Creating PCA with {pca_components} components.")

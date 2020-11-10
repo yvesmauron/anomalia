@@ -177,7 +177,7 @@ def train_smavra(
         kld_annealing_start_epoch=0,
         kld_annealing_max=0.5,
         kld_annealing_intervals=[15, 25, 5],
-        kld_latent_loss_weight=.0025,
+        kld_latent_loss_weight=.00275,
         kld_attention_loss_weight=.03
     )
 

@@ -31,13 +31,16 @@ mlflow_client = MlflowClient()
 experiments = mlflow_client.get_experiment_by_name("SMAVRA")
 runs = mlflow_client.list_run_infos(experiments.experiment_id)
 
-
+scored_runs = [
+    os.path.basename(p) for p in Path("data/output/score").iterdir()
+]
 run_labels = [
     {
         "label": "Run from " +
         f"{datetime.utcfromtimestamp(r.start_time / 1000.0).strftime('%Y-%m-%d %H:%M:%S')}",
         "value": r.run_id
     } for r in runs
+    if r.run_id in scored_runs
 ]
 
 layout = dict(
@@ -169,7 +172,8 @@ app.layout = html.Div(
                             [dcc.Graph(id="g_attention_1")],
                             className="pretty_container"
                         ),
-                        className="four columns"
+                        className="four columns",
+                        style={"margin-left": "0px"}
                     ),
                     html.Div(
                         html.Div(
@@ -416,7 +420,7 @@ def update_latent(run_id):
         text=(
             "File: " +
             df["file_name"] +
-            " Epoch:" +
+            "<br> Epoch:" +
             df["epoch"].astype(str)).values,
         hovertemplate="<b>%{text}</b><br>"
                       "<br><b>PC1:</b>: %{x}" +
@@ -471,7 +475,7 @@ def update_attention(clickData, run_id):
             z=attention[i]
         )
         layout_plot = copy.deepcopy(layout)
-        layout_plot["title"] = f'Attention file {file_name}; Epoch: {int(epoch)}'
+        layout_plot["title"] = f'Attention {i}; Epoch: {int(epoch)}'
 
         figure = dict(data=[data], layout=layout_plot)
 

@@ -70,13 +70,20 @@ def predict_file(
                 2
             ).mean(axis=(1, 2)).cpu().detach().numpy()
 
+            epoch_original_scale = dataset.backtransform(epoch.view(
+                batch * seq, fe).cpu().detach()
+            )
+
             if explain_latent:
                 latents.append(
                     np.append(
                         arr=latent.squeeze().cpu().detach().numpy(),
                         values=[
                             epoch_mse,
-                            i
+                            i,
+                            -1
+                            if any(epoch_original_scale[:, 2] < -32760)
+                            else 0
                         ]
                     )
                 )
@@ -105,14 +112,22 @@ def predict_file(
 
             epoch_id = np.repeat([[i]], repeats=batch * seq, axis=0)
 
+            epoch_class = -1 if any(
+                epoch_original_scale[:, 2] < -32760) else 0
+            epoch_class = np.repeat(
+                [[epoch_class]], repeats=batch * seq, axis=0)
+
             predictions = np.concatenate(
-                [epoch_id, mu_scaled, mu, epoch_mse, t_mse, m_se], axis=1)
+                [epoch_id, mu_scaled, mu, epoch_mse, t_mse, m_se, epoch_class],
+                axis=1
+            )
 
             colnames = ["epoch_id"] \
                 + [f"{_}_mu_scaled" for _ in column_order] \
                 + [f"{_}_mu" for _ in column_order] \
                 + ["epoch_mse", "t_mse"] \
-                + [f"{_}_se" for _ in column_order]
+                + [f"{_}_se" for _ in column_order] \
+                + ["epoch_class"]
 
             predictions = pd.DataFrame(predictions, columns=colnames)
 
@@ -128,7 +143,7 @@ def predict_file(
     '--run_id',
     type=click.STRING,
     help="run id from mlflow experiment. check mlflow ui.",
-    default="ecc7cf3c9c424adc9641337a9868ed5e"
+    default="4d8ddb41e7f340c182a6a62699502d9f"
 )
 @click.option(
     '--input_dir',
@@ -173,6 +188,12 @@ def predict_file(
     help="if attention space should be explained or not." +
          "(could lead to very large files)"
 )
+@click.option(
+    '--score_file_pattern',
+    type=click.STRING,
+    default="20201*",
+    help="Files prefix to be used for scoring."
+)
 def predict_smavra(
     run_id: str,
     input_dir: str = "data/processed/resmed/score",
@@ -181,7 +202,8 @@ def predict_smavra(
     seq_len: int = 750,
     device: str = "cuda",
     explain_latent: bool = True,
-    explain_attention: bool = False
+    explain_attention: bool = False,
+    score_file_pattern: str = "20201*"
 ):
     """predict using trained smavra network
 
@@ -249,7 +271,7 @@ def predict_smavra(
         smavra.cpu()
 
     logger.info("Start with predicition.")
-    for score_file_path in Path(input_dir).iterdir():
+    for score_file_path in Path(input_dir).glob(score_file_pattern):
 
         pred_df = pq.read_table(
             os.path.join(score_file_path)
@@ -296,10 +318,11 @@ def predict_smavra(
             latents = np.stack(latents, 0)
             latent_cols = [
                 f"latent_{i}" for i in range(
-                    latents.shape[1] - 2)
+                    latents.shape[1] - 3)
             ]
             df = pd.DataFrame(
-                latents, columns=latent_cols + ["epoch_loss", "epoch"]
+                latents, columns=latent_cols +
+                ["epoch_loss", "epoch", "epoch_class"]
             )
 
             df["file_name"] = os.path.basename(score_file_path)[:15]

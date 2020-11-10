@@ -149,6 +149,9 @@ def process_resmed_score(
                 os.path.join(data_path, file_name)
             ).to_pandas()
 
+            # filter default values
+            # df = df.loc[df["delivered_volum"] > -32768, :]
+
             # get tensor
             n_samples = df.shape[0]
 

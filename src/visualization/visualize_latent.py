@@ -32,7 +32,8 @@ def explain_latent(
     pca_fig, tsne_fig = viz.plot_latent(
         run_id,
         pca_components,
-        tsne_components
+        tsne_components,
+        compute_tsne=True
     )
 
     pca_fig.write_html(
