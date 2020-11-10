@@ -107,7 +107,7 @@ def train_smavra(
         'attention_size': 1 if TEST_MODE else 2,
         'output_size': 1 if TEST_MODE else 3,
         'num_layers': 1 if TEST_MODE else 2,
-        'n_heads': 1 if TEST_MODE else 1,
+        'n_heads': 1 if TEST_MODE else 2,
         'dropout': 0.5,
         'batch_first': True,
         'cuda': USE_CUDA,

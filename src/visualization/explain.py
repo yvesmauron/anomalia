@@ -161,15 +161,22 @@ app.layout = html.Div(
                             [dcc.Graph(id="g_latent_size")],
                             className="pretty_container"
                         ),
-                        className="six columns",
+                        className="four columns",
                         style={"margin-left": "0px"}
                     ),
                     html.Div(
                         html.Div(
-                            [dcc.Graph(id="g_attention")],
+                            [dcc.Graph(id="g_attention_1")],
                             className="pretty_container"
                         ),
-                        className="six columns"
+                        className="four columns"
+                    ),
+                    html.Div(
+                        html.Div(
+                            [dcc.Graph(id="g_attention_2")],
+                            className="pretty_container"
+                        ),
+                        className="four columns"
                     ),
                 ],
                     className="twelve columns",
@@ -442,7 +449,10 @@ def display_click_data(clickData):
 
 
 @ app.callback(
-    Output('g_attention', 'figure'),
+    [
+        Output('g_attention_1', 'figure'),
+        Output('g_attention_2', 'figure')
+    ],
     [
         Input('g_latent_size', 'clickData'),
         State('dd_runs', 'value')
@@ -453,19 +463,26 @@ def update_attention(clickData, run_id):
     attention = viz.epoch_attention(
         run_id=run_id, session=file_name, epoch_nr=epoch
     )
-    data = dict(
-        type="heatmap",
-        name="PCA Latent",
-        z=attention[0]
-    )
-    layout_plot = copy.deepcopy(layout)
-    layout_plot["title"] = f'Attention file {file_name}; Epoch: {int(epoch)}'
+    figs = []
+    for i in range(len(attention)):
+        data = dict(
+            type="heatmap",
+            name="PCA Latent",
+            z=attention[i]
+        )
+        layout_plot = copy.deepcopy(layout)
+        layout_plot["title"] = f'Attention file {file_name}; Epoch: {int(epoch)}'
 
-    figure = dict(data=[data], layout=layout_plot)
+        figure = dict(data=[data], layout=layout_plot)
+
+        figs.append(figure)
+
+    if len(figs) == 1:
+        figs.append(None)
     # import plotly.express as px
     # fig = px.imshow(attention[0])
 
-    return figure
+    return figs
 
 
 @ app.callback(
