@@ -15,9 +15,13 @@ import mlflow
 
 from src.features.build_features import reshape_resmed_tensor
 from src.models.anomalia.datasets import ResmedDatasetEpoch
+from src.visualization.cluster import hdbscan_cluster
+
+
 import plotly.express as px
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import RobustScaler
 from mlflow.tracking import MlflowClient
 import torch
 
@@ -198,7 +202,7 @@ def plot_signals(
 def latent_pca_data(
     run_id: str,
     pca_components: int = 3,
-    test_file_pattern: str = "20201*"
+    test_lookback: str = 20201020
 ):
     logger = logging.getLogger(__name__)
 
@@ -213,29 +217,42 @@ def latent_pca_data(
     latent_dir = os.path.join("data/output/explain/latent", run_id)
     latents = []
 
-    for p in Path(latent_dir).iterdir():
-        df = pq.read_table(p).to_pandas()
-        latents.append(df)
+    # for p in Path(latent_dir).iterdir():
+    #     df = pq.read_table(p).to_pandas()
+    #     latents.append(df)
 
-    train = pd.concat(latents, axis=0)
-    train = train.loc[train["epoch_class"] >= 0, :]
+    # train = pd.concat(latents, axis=0)
+    # train = train.loc[train["epoch_class"] >= 0, :]
+    #
+    # train_scaled = scaler.transform(train.iloc[:, :latent_size])
 
     latents = []
-    for p in Path(latent_dir).glob(test_file_pattern):
+    test_paths = [
+        p for p in Path(latent_dir).iterdir()
+        if int(os.path.basename(p)[:8]) > test_lookback
+    ]
+
+    for p in test_paths:
         df = pq.read_table(p).to_pandas()
         latents.append(df)
 
     test = pd.concat(latents, axis=0)
     test = test.loc[test["epoch_class"] >= 0, :]
+    scaler = RobustScaler().fit(test.iloc[:, :latent_size])
+    test_scaled = scaler.transform(test.iloc[:, :latent_size])
+
+    print(test.shape)
+
+    labels, probs = hdbscan_cluster(test_scaled, min_cluster_size=5)
 
     # PCA
     logger.info(f"Creating PCA with {pca_components} components.")
 
     # fit pca
     pca = PCA(n_components=pca_components)
-    pca.fit(train.iloc[:, :latent_size])
+    pca.fit(test_scaled)
 
-    components = pca.transform(test.iloc[:, :latent_size])
+    components = pca.transform(test_scaled)
 
     # create df for visualization
     pca_columns = [f"PC{i+1}" for i in range(pca_components)]
@@ -246,7 +263,7 @@ def latent_pca_data(
 
     explained = pca.explained_variance_ratio_.sum() * 100
 
-    return test, components, explained
+    return test, components, explained, labels, probs
 
 
 def plot_latent(

@@ -408,39 +408,46 @@ def update_latent(run_id):
 
     layout_plot = copy.deepcopy(layout)
 
-    df, pca_data, explained = viz.latent_pca_data(
+    df, pca_data, explained, labels, probs = viz.latent_pca_data(
         run_id=run_id, pca_components=2)
+    print(np.unique(labels))
+    data = [
+        dict(
+            type="scatter",
+            mode="markers",
+            name=str(l),
+            x=pca_data.loc[labels == l, "PC1"].values,
+            y=pca_data.loc[labels == l, "PC2"].values,
+            text=(
+                "File: " +
+                df.loc[labels == l, "file_name"] +
+                "<br> Epoch:" +
+                df.loc[labels == l, "epoch"].astype(str)).values +
+            "<br> Class:" + str(l),
+            hovertemplate="<b>%{text}</b><br>"
+            "<br><b>PC1:</b>: %{x}" +
+            "<br><b>PC2:</b>: %{y}",
+            marker=dict(
+                # color=np.log(df.epoch_loss.astype("float")),-
+                color=str(l),
+                # coloraxis='coloraxis',
+                colorbar=dict(),
+                showscale=False,
+                symbol='circle'
+                # colorscale="Viridis"
+            ),
 
-    data = dict(
-        type="scatter",
-        mode="markers",
-        name="PCA Latent",
-        x=pca_data["PC1"].values,
-        y=pca_data["PC2"].values,
-        text=(
-            "File: " +
-            df["file_name"] +
-            "<br> Epoch:" +
-            df["epoch"].astype(str)).values,
-        hovertemplate="<b>%{text}</b><br>"
-                      "<br><b>PC1:</b>: %{x}" +
-                      "<br><b>PC2:</b>: %{y}",
-        marker=dict(
-            color=np.log(df.epoch_loss.astype("float")),
-            # coloraxis='coloraxis',
-            colorbar=dict(),
-            showscale=True,
-            symbol='circle'
-            # colorscale="Viridis"
-        ),
-
-        customdata=df[["epoch", "file_name"]].values.reshape(-1, 2)
-    )
+            customdata=df.loc[labels == l, [
+                "epoch", "file_name"]].values.reshape(-1, 2)
+        )
+        for l in np.unique(labels)
+    ]
 
     layout_plot["title"] = f'PCA Latent; Explained Variance: {explained:.2f}%'
     layout_plot['clickmode'] = 'event+select'
+    layout_plot['showlegend'] = True
 
-    figure = dict(data=[data], layout=layout_plot)
+    figure = dict(data=data, layout=layout_plot)
 
     return figure
 
