@@ -24,4 +24,6 @@ pip:
   - torch
   - torchvision
   - mlflow
+  - hdbscan
+  - mne
 
