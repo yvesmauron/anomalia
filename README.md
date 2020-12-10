@@ -1,10 +1,69 @@
 anomalia
 ==============================
+Project for 
+Anomaly Detection for Sequence Data (time series)
 
-Anomaly Detection for Sequence Data
+
+------------------------
+Description
+------------------------
+
+
+Preparation
+------------------------
+The project is a python project. Best is to create an own
+conda environment (anaconda or miniconda) and to avtivate this, e.g.
+commands:
+    conda create newenv 
+    conda activate newenv
+
+
+Installation 
+------------------------
+1. Git Project 
+    get the whole git project by 
+    
+    command:
+        git clone https://github.com/maurony/ts-vrae
+
+2. Required python packages
+    the file requirements.txt contains all needed python libraries.
+    (this will consume a frew GBs)
+    
+    command:
+        pip install -r requirements.txt
+
+3. Setup environment variaples
+    You to put the file .env into your project's root directory (installation path).
+    It contains all neccessary access rights and can be queried by the project care takers
+    Yvves Mauro or Martin Mosisch. 
+
+4. Download data base
+    To download the data sources you need to download about 600 Megabytes (10. Dec. 2020)
+    !! Madatory: You need the file .env file !!     
+    
+    command:
+        python src/data/make_dataset.py
+    
+5. Start training 
+    command:
+        python src/models/train.py
+
+6. GUI
+    Web-base grafical User Interface
+    to start the server 
+    command:
+        mlflow ui
+
+( if needed ...)
+7. Convert data (may your own) into .paquet file format
+    command:
+        python stage_edf_file.py
+
+
 
 Project Organization
-------------
+------------------------
 
     ├── LICENSE
     ├── Makefile           <- Makefile with commands like `make data` or `make train`
