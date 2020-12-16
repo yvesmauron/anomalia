@@ -22,3 +22,5 @@ azure-keyvault-secrets
 torch
 torchvision
 mlflow
+hdbscan
+mne

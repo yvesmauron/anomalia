@@ -1,0 +1,29 @@
+##-- Dummy file for environment settings --##
+# Environment variables go here, can be read by `python-dotenv` package:
+#
+#   `src/script.py`
+#   ----------------------------------------------------------------
+#    import dotenv
+#
+#    project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
+#    dotenv_path = os.path.join(project_dir, '.env')
+#    dotenv.load_dotenv(dotenv_path)
+#   ----------------------------------------------------------------
+# 
+# Service Principal
+AZURE_TENANT_ID=<ID>
+AZURE_CLIENT_SECRET=<KEY>
+AZURE_CLIENT_ID=<ID>
+
+# key vault for secrets
+KEY_VAULT_URL="https://atemreich-keyvault.vault.azure.net/"
+
+# name of data lake
+DATALAKE_NAME=<DATA LAKE NAME>
+
+# azure machine learning services
+ML_WORKSPACE_CONFIG=config/ws_config.json
+
+
+MLFLOW_TOKEN=<TOKEN>
+#MLFLOW_TRACKING_URI=databricks
