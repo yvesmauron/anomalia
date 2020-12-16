@@ -1,29 +1,18 @@
-
-import matplotlib.pyplot as plt
 import logging.config
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 import pandas as pd
-import pickle as pkl
 import shutil
 import pyarrow.parquet as pq
 import pyarrow as pa
 from pathlib import Path
 import argparse
-import json
 import os
 import sys
 import mne
 
 sys.path.append(os.getcwd())
-
-#import glob
-# compression
-# data transformations
-# logging
-# atemreich imports
-# dev
 
 # ------------------------------------------------------------------------
 # initialize logger
@@ -49,12 +38,14 @@ def stage_edf_file(source_folder: str, target_folder: str, station: str):
     # check if arguments are staging_path, i.e. if directory exists
     if os.path.exists(staging_path):
         logger.warning(
-            'Unclassified directory: {} already exists, it will be recreated.'.format(staging_path))
+            'Unclassified directory: {} already exists, \
+                it will be recreated.'.format(staging_path))
         shutil.rmtree(staging_path)
         os.makedirs(staging_path)
     else:
         logger.info(
-            'Unclassified directory: {} it will be created.'.format(staging_path))
+            'Unclassified directory: {} \
+                it will be created.'.format(staging_path))
         os.makedirs(staging_path)
 
     source_path = Path(source_folder)
