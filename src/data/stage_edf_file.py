@@ -28,13 +28,13 @@ sys.path.append(os.getcwd())
 # ------------------------------------------------------------------------
 # initialize logger
 logging.config.fileConfig(
-    os.path.join(os.getcwd(), 'config', 'logging.conf')
+    os.path.join( os.getcwd(), 'config', 'logging.conf' )
 )
 
 # create logger
 logger = logging.getLogger('anomalia')
 
-
+# convert files
 def stage_edf_file(source_folder: str, target_folder: str, station: str):
     now = datetime.now()  # current date and time
     date_time = now.strftime("%Y%m%d")
@@ -99,32 +99,38 @@ def stage_edf_file(source_folder: str, target_folder: str, station: str):
 parser = argparse.ArgumentParser(
     description='Convert edf files to parquet'
 )
-# get arguments
+
+# get argument
 parser.add_argument(
     "--source_folder",
     help="The folder where the respiration files are saved",
     default='data/resmed/raw/Bianca'
 )
 
-# get arguments
+# get argument
 parser.add_argument(
     "--target_folder",
     help="The folder where converted files will be saved",
     default='data/resmed/staging'
 )
 
-# get arguments
+# get argument
 parser.add_argument(
     "--station",
     help="The station from which the data was recorded",
     default='BIA'
 )
 
-args = parser.parse_args()
-
+##-- main --##
 if __name__ == '__main__':
+    
+    # get arguments
+    args = parser.parse_args()
 
+    # set parameters
     source_folder = str(args.source_folder)
     target_folder = str(args.target_folder)
     station = str(args.station)
+
+    # convert edf-files into paquet format
     stage_edf_file(source_folder, target_folder, station)
