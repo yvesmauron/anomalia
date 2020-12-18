@@ -4,7 +4,7 @@ import pandas as pd
 
 def hdbscan_cluster(
     df: pd.DataFrame,
-    min_cluster_size: int = 5,
+    min_cluster_size: int = 10,
     gen_min_span_tree: bool = True
 ):
 
