@@ -12,12 +12,7 @@ from src.features.build_features import (
     process_resmed_score
 )
 
-# Azure keyvault dependencies
-from azure.keyvault.secrets import SecretClient
-from azure.identity import DefaultAzureCredential
-
-# Required for Azure Data Lake Storage Gen1 filesystem management
-from azure.datalake.store import core, lib
+from src.data.utils import azure as azure_utils
 
 # Set the logging level for all azure-* libraries
 azure_logger = logging.getLogger('azure')
@@ -56,24 +51,9 @@ def sync_azure_datalake(input_user_data_path, input_data_path,
     logger.info("connecting to azure datalake...")
     # get data from ADLS
     # Get credentials
-    credentials = DefaultAzureCredential()
-
-    # Create a secret client
-    secret_client = SecretClient(
-        os.environ.get("KEY_VAULT_URL"),  # Your KeyVault URL
-        credentials
-    )
-
-    adlCreds = lib.auth(
-        tenant_id=secret_client.get_secret("tenantid").value,
-        client_id=secret_client.get_secret("spclientid").value,
-        client_secret=secret_client.get_secret("spclientsecret").value,
-        resource="https://datalake.azure.net/"
-    )
-
-    # Create a filesystem client object
-    adlsFileSystemClient = core.AzureDLFileSystem(
-        adlCreds, store_name=os.environ.get("DATALAKE_NAME"))
+    adlsFileSystemClient = azure_utils.adls_client(
+        os.environ.get("KEY_VAULT_URL"),
+        os.environ.get("DATALAKE_NAME"))
 
     user_data_path = Path(output_user_data_path)
     data_path = Path(output_data_path)
