@@ -19,17 +19,17 @@ azure_logger.setLevel(logging.WARNING)
 
 @click.command()
 @click.argument(
-    'input_path',
+    '--input_path',
     type=click.Path(),
     default="raw/manual-extraction/resmed/bianca/2020-12-15/DATALOG"
 )
 @click.argument(
-    'output_path',
+    '--output_path',
     type=click.Path(),
     default="exploration/video-analysis/data"
 )
 @click.argument(
-    'station',
+    '--station',
     type=click.STRING,
     default="bia"
 )

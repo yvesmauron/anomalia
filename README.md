@@ -1,69 +1,82 @@
-anomalia
-==============================
-Project for 
+# anomalia
+
 Anomaly Detection for Sequence Data (time series)
 
+## Project setup
 
-------------------------
-Description
-------------------------
+The project is a python project. We suggest to create a
+conda environment (anaconda or miniconda) and to avtivate it, e.g.
 
+```sh
+conda create newenv 
+conda activate newenv
+```
 
-Preparation
-------------------------
-The project is a python project. Best is to create an own
-conda environment (anaconda or miniconda) and to avtivate this, e.g.
-commands:
-    conda create newenv 
-    conda activate newenv
+After setting up your environment, clone/pull the project to your machine, like:
 
+```sh
+git clone https://github.com/yvesmauron/time-series-anomaly-detection
+```
 
-Installation 
-------------------------
-1. Git Project 
-    get the whole git project by 
-    
-    command:
-        git clone https://github.com/maurony/ts-vrae
+and install the required packages (will consume some storage space) using the `requirements.txt`.
 
-2. Required python packages
-    the file requirements.txt contains all needed python libraries.
-    (this will consume a frew GBs)
-    
-    command:
-        pip install -r requirements.txt
+```sh
+pip install -r requirements.txt
+```
 
-3. Setup environment variaples
-    You to put the file .env into your project's root directory (installation path).
-    It contains all neccessary access rights and can be queried by the project care takers
-    Yvves Mauro or Martin Mosisch. 
+The only additional file you need is the `.env` file containing the environment varaibales necessary to connect to azure ressources. To get the file, please contact the project owner. 
 
-4. Download data base
-    To download the data sources you need to download about 600 Megabytes (10. Dec. 2020)
-    !! Madatory: You need the file .env file !!     
-    
-    command:
-        python src/data/make_dataset.py
-    
-5. Start training 
-    command:
-        python src/models/train.py
+> Please be careful with this file and do not share with others not authorized to work on the project. Also, do not upload it to servers that you do not control.
 
-6. GUI
-    Web-base grafical User Interface
-    to start the server 
-    command:
-        mlflow ui
+## Usage
 
-( if needed ...)
-7. Convert data (may your own) into .paquet file format
-    command:
-        python stage_edf_file.py
+To process incoming edf files, navigate to your project directory and activate the environment you created above:
 
+```sh
+python src/data/stage_resmed.py --input_path /path/ --output_path /path/ --station bia
+```
 
+To create download the data for training or prediction on your machine, call `make_dataset` as follows:
 
-Project Organization
-------------------------
+```sh
+python src/data/make_dataset.py
+```
+
+You can now start training the model as follows:
+
+```sh
+python src/models/train.py
+```
+
+The parameters used for the training and the training progress can be investigated with mlflow; you can start the mlflow ui as follows:
+
+```sh
+mlflow ui
+```
+
+After successfully training the model you can start with the prediction process. To predict the anomaly score you must provide the `run_id` (you can guid from the mlflow ui), also you can specify i.e. with the `score_file_pattern` to e.g. only predict data from December 2020  with the following pattern `202012*`
+
+This would then look similar to that.
+
+```sh
+python src/models/predict.py --run_id=4d8ddb41e7f340c182a6a62699502d9f --score_file_pattern=202012*
+```
+
+To analyze your predictions and better understand your model, you can use the explain ui implemented with dash. To run it, you can use the following command:
+
+```sh
+python src/visualization/explain.py
+```
+
+> You can get all the available parameters for all of the above scripts by calling `python path/to/script.py --help`
+
+## For developers
+
+Please note that this project is currently under active development and by no means finished. Additional features, such as workflow tool (like e.g. Airflow) etc. are prioritized, planned and implemented by the project team. Please contact the project team if you plan to contribute, there are lots of things to do :-).
+
+### Project Organization
+
+The project follows the data science cookiecutter template. Thus the code is structured as follows:
 
     ├── LICENSE
     ├── Makefile           <- Makefile with commands like `make data` or `make train`
@@ -112,5 +125,4 @@ Project Organization
 
 
 --------
-
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
