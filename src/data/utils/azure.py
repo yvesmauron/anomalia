@@ -12,7 +12,7 @@ azure_logger = logging.getLogger('azure')
 azure_logger.setLevel(logging.WARNING)
 
 
-def secret_client(key_vault_url):
+def secret_client(key_vault_url: str) -> SecretClient:
     # Get credentials
     credentials = DefaultAzureCredential()
 
@@ -25,7 +25,7 @@ def secret_client(key_vault_url):
     return secret_client
 
 
-def adls_client(key_vault_url, store_name):
+def adls_client(key_vault_url: str, store_name: str) -> core.AzureDLFileSystem:
 
     sc = secret_client(key_vault_url)
 

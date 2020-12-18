@@ -1,127 +1,100 @@
-import logging.config
+import click
 import logging
-from datetime import datetime
-import numpy as np
-import pandas as pd
-import shutil
 import pyarrow.parquet as pq
 import pyarrow as pa
 from pathlib import Path
-import argparse
+from dotenv import find_dotenv, load_dotenv
+import tempfile
 import os
 import sys
-import mne
+from src.data.utils import edf, azure as azure_utils
+import re
 
 sys.path.append(os.getcwd())
 
 # ------------------------------------------------------------------------
-# initialize logger
-logging.config.fileConfig(
-    os.path.join( os.getcwd(), 'config', 'logging.conf' )
+azure_logger = logging.getLogger('azure')
+azure_logger.setLevel(logging.WARNING)
+
+
+@click.command()
+@click.argument(
+    'input_path',
+    type=click.Path(),
+    default="raw/manual-extraction/resmed/bianca/2020-12-15/DATALOG"
 )
+@click.argument(
+    'output_path',
+    type=click.Path(),
+    default="exploration/video-analysis/data"
+)
+@click.argument(
+    'station',
+    type=click.STRING,
+    default="bia"
+)
+def stage_edf_file(input_path: str, output_path: str, station: str):
+    """convert edf file to parquet file
 
-# create logger
-logger = logging.getLogger('anomalia')
+    Args:
+        input_path (str): input path in adls lake
+        output_path (str): output path in adls lake
+        station (str): station as this info cannot be found in edf files
 
-# convert files
-def stage_edf_file(source_folder: str, target_folder: str, station: str):
-    now = datetime.now()  # current date and time
-    date_time = now.strftime("%Y%m%d")
-    staging_path = os.path.join(target_folder, date_time)
+    Raises:
+        FileNotFoundError: if file does not exist on adls
+    """
+    logger = logging.getLogger(__name__)
+    logger.info('making final data set from raw data')
 
     # read respiration data
-    # check if arguments are valid, i.e. if directory exists
-    if not os.path.exists(source_folder):
-        logger.error(f'Source directory: {source_folder} is not valid')
-        raise FileNotFoundError
+    adlsFileSystemClient = azure_utils.adls_client(
+        os.environ.get("KEY_VAULT_URL"),
+        os.environ.get("DATALAKE_NAME"))
 
-    # check if arguments are staging_path, i.e. if directory exists
-    if os.path.exists(staging_path):
-        logger.warning(
-            'Unclassified directory: {} already exists, \
-                it will be recreated.'.format(staging_path))
-        shutil.rmtree(staging_path)
-        os.makedirs(staging_path)
-    else:
-        logger.info(
-            'Unclassified directory: {} \
-                it will be created.'.format(staging_path))
-        os.makedirs(staging_path)
+    data_paths = adlsFileSystemClient.ls(input_path)
 
-    source_path = Path(source_folder)
+    # only data paths
+    data_paths = [i for i in data_paths if re.search(r"_HRD.edf", i)]
 
-    source_files = list(source_path.glob("*HRD.edf"))
-
-    for file_name in source_files:
+    for file_name in data_paths:
         file_name = str(file_name)
-        logger.info(f"processing file {file_name}")
 
-        edf_file = mne.io.read_raw_edf(file_name)
+        target_path = os.path.join(output_path,
+                                   os.path.basename(file_name))
 
-        channels = edf_file.ch_names
+        if not adlsFileSystemClient.exists(target_path):
+            logger.info(f"processing file {file_name}")
+            # download edf file to temp storage and convert it to df
+            with tempfile.NamedTemporaryFile(suffix=".edf") as f:
+                adlsFileSystemClient.get(
+                    file_name,
+                    f.name
+                )
 
-        cols = len(channels)
-        rows = len(edf_file[0][0][0])
+                edf_df = edf.process_resmed(
+                    file_path=str(f.name), station=station)
 
-        edf_data = np.zeros((rows, cols))
+            table = pa.Table.from_pandas(edf_df)
 
-        for i in range(len(channels)):
-            edf_data[:, i] = edf_file[channels[i]][0][0]
+            with tempfile.NamedTemporaryFile(suffix=".parquet") as f:
+                pq.write_table(table, f.name)
+                adlsFileSystemClient.put(f.name, f"{target_path}.parquet")
 
-        edf_df = pd.DataFrame(edf_data)
-        edf_df.columns = [c.lower() for c in channels]
-
-        edf_df["timestamp"] = edf_file.info["meas_date"]
-        edf_df["time_offset"] = edf_file[0][1] - min(edf_file[0][1])
-        edf_df["timestamp"] = edf_df["timestamp"] + \
-            pd.to_timedelta(edf_file[0][1], "s")
-        edf_df["timestamp"] = edf_df["timestamp"].dt.strftime(
-            "%Y-%m-%d %H:%M:%S.%f")
-        edf_df["station"] = station
-
-        table = pa.Table.from_pandas(edf_df)
-        source_file_name = os.path.basename(str(file_name))
-        pq.write_table(table, os.path.join(
-            staging_path, f"{source_file_name}.parquet"))
+        else:
+            logger.info(f"file {target_path} already exists, not processing.")
 
 
-# ------------------------------------------------------------------------
-# Parse arguments
-parser = argparse.ArgumentParser(
-    description='Convert edf files to parquet'
-)
-
-# get argument
-parser.add_argument(
-    "--source_folder",
-    help="The folder where the respiration files are saved",
-    default='data/resmed/raw/Bianca'
-)
-
-# get argument
-parser.add_argument(
-    "--target_folder",
-    help="The folder where converted files will be saved",
-    default='data/resmed/staging'
-)
-
-# get argument
-parser.add_argument(
-    "--station",
-    help="The station from which the data was recorded",
-    default='BIA'
-)
-
-##-- main --##
 if __name__ == '__main__':
-    
-    # get arguments
-    args = parser.parse_args()
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.INFO, format=log_fmt)
 
-    # set parameters
-    source_folder = str(args.source_folder)
-    target_folder = str(args.target_folder)
-    station = str(args.station)
+    # not used in this stub but often useful for finding various files
+    project_dir = Path(__file__).resolve().parents[2]
+
+    # find .env automagically by walking up directories until it's found, then
+    # load up the .env entries as environment variables
+    load_dotenv(find_dotenv())
 
     # convert edf-files into paquet format
-    stage_edf_file(source_folder, target_folder, station)
+    stage_edf_file()
