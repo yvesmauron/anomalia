@@ -291,6 +291,8 @@ def plot_latent(
 
     df = pd.concat(latents, axis=0)
 
+    print(df.head(3))
+
     # PCA
     logger.info(f"Creating PCA with {pca_components} components.")
 
@@ -411,7 +413,10 @@ def epoch_attention(
             preprocessing_config = json.load(f)
 
     # load model
-    smavra = mlflow.pytorch.load_model('runs:/' + run_id + '/model')
+    smavra = mlflow.pytorch.load_model(
+        'runs:/' + run_id + '/model',
+        map_location="cuda:0"
+    )
 
     smavra.eval()
     if device == "cuda":

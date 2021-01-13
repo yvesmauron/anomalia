@@ -46,6 +46,7 @@ def predict_file(
         ascii=True
     ) as pbar:
         pbar.set_postfix(file=file_path)
+
         for i, epoch in enumerate(score_loader):
             # get prediction
             h_t, latent, attention_weight, attention, lengths = \
@@ -191,7 +192,7 @@ def predict_file(
 @click.option(
     '--score_file_pattern',
     type=click.STRING,
-    default="20201*",
+    default="202012*",
     help="Files prefix to be used for scoring."
 )
 def predict_smavra(
@@ -203,7 +204,7 @@ def predict_smavra(
     device: str = "cuda",
     explain_latent: bool = True,
     explain_attention: bool = False,
-    score_file_pattern: str = "20201*"
+    score_file_pattern: str = "202012*"
 ):
     """predict using trained smavra network
 
@@ -262,7 +263,10 @@ def predict_smavra(
             preprocessing_config = json.load(f)
 
     # load model
-    smavra = mlflow.pytorch.load_model('runs:/' + run_id + '/model')
+    smavra = mlflow.pytorch.load_model(
+        'runs:/' + run_id + '/model',
+        map_location="cuda:0"
+    )
 
     smavra.eval()
     if device == "cuda":

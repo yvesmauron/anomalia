@@ -406,11 +406,23 @@ def update_run_stats(run_id):
 )
 def update_latent(run_id):
 
+    # just for demo purposes -- delete afterwards
+
+    # - diskonnektion
+
     layout_plot = copy.deepcopy(layout)
 
     df, pca_data, explained, labels, probs = viz.latent_pca_data(
         run_id=run_id, pca_components=2)
-    print(np.unique(labels))
+
+    df["symbol"] = "circle"
+    df.loc[(df.epoch > 481) & (df.file_name ==
+                               "20201214_120001"), "symbol"] = "diamond"
+    # if demo:
+    #     opacity = 0.1 + \
+    #         (((df.epoch > 481) & (df.file_name == "20201214_120001")) * 0.9)
+
+    # print(opacity.loc[labels == -1])
     data = [
         dict(
             type="scatter",
@@ -433,7 +445,8 @@ def update_latent(run_id):
                 # coloraxis='coloraxis',
                 colorbar=dict(),
                 showscale=False,
-                symbol='circle'
+                symbol=df.symbol.loc[labels == label]
+                # opacity=opacity.loc[labels == label]
                 # colorscale="Viridis"
             ),
 
@@ -578,5 +591,5 @@ def update_reconstruction(
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
 # server = app.server
