@@ -66,12 +66,20 @@ USE_CUDA = True
     default="local",
     help="Where it should be computed; not supported at the moment."
 )
+@click.option(
+    '--cuda_device', 
+    type=click.INT, 
+    default=0, 
+    help="Which grafic card to use, starts which index = 0."
+)
+
 def train_smavra(
     batch_size: int,
     train_data: str,
     n_epochs: int,
     ds_name: str,
     output_dir: str,
+    cuda_device: int,
     compute_node: str
 ):
     """Train smavra model
@@ -83,6 +91,7 @@ def train_smavra(
         ds_name (str): Dataset name in Azure Machine Leaning Services.
         output_dir (str): Output directory to be used in Azure ML Services.
         compute_node (str): Where it should be computed; not supported.
+        cuda_device (int) : which grafic card device to use [default : 0 (first device)]
     """
     # --------------------------------------------------------
     # init workspace
@@ -124,6 +133,7 @@ def train_smavra(
     smavra.float()
 
     if USE_CUDA:
+        torch.cuda.set_device(cuda_device)
         smavra.cuda()
 
     # --------------------------------------------------------
