@@ -67,12 +67,11 @@ USE_CUDA = True
     help="Where it should be computed; not supported at the moment."
 )
 @click.option(
-    '--cuda_device', 
-    type=click.INT, 
-    default=0, 
+    '--cuda_device',
+    type=click.INT,
+    default=0,
     help="Which grafic card to use, starts which index = 0."
 )
-
 def train_smavra(
     batch_size: int,
     train_data: str,
