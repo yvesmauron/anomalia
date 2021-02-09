@@ -74,6 +74,14 @@ python src/visualization/explain.py
 
 Please note that this project is currently under active development and by no means finished. Additional features, such as workflow tool (like e.g. Airflow) etc. are prioritized, planned and implemented by the project team. Please contact the project team if you plan to contribute, there are lots of things to do :-).
 
+## Clean up mlruns directory
+
+You can clean up the absolute paths in the mlruns directory using the following command:
+
+```sh
+find mlruns/1/ -path "*/meta.yaml" -type f -exec sed -i 's|file:///path/to/your/repo|.|g' {} ";"
+```
+
 ### Project Organization
 
 The project follows the data science cookiecutter template. Thus the code is structured as follows:

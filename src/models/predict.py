@@ -149,13 +149,13 @@ def predict_file(
 @click.option(
     '--input_dir',
     type=click.Path(),
-    default="data/processed/resmed/score",
+    default="reports/data/computer_bild/input",
     help="input directory holding the data to be predicted."
 )
 @click.option(
     '--output_dir',
     type=click.Path(),
-    default="data/output/",
+    default="reports/data/computer_bild/output",
     help="the directory the predictions should be written to."
 )
 @click.option(
@@ -192,19 +192,19 @@ def predict_file(
 @click.option(
     '--score_file_pattern',
     type=click.STRING,
-    default="202012*",
+    default="*",
     help="Files prefix to be used for scoring."
 )
 def predict_smavra(
     run_id: str,
-    input_dir: str = "data/processed/resmed/score",
-    output_dir: str = "data/scored/resmed",
+    input_dir: str = "reports/data/computer_bild/input",
+    output_dir: str = "reports/data/computer_bild/output",
     preprocessing_config: str = "config/preprocessing_config.json",
     seq_len: int = 750,
     device: str = "cuda",
     explain_latent: bool = True,
     explain_attention: bool = False,
-    score_file_pattern: str = "202012*"
+    score_file_pattern: str = "*"
 ):
     """predict using trained smavra network
 
@@ -306,7 +306,10 @@ def predict_smavra(
         else:
             preds = preds[0]
 
-        preds = pd.concat([pred_df, preds], axis=1)
+        preds = pd.concat([
+            pred_df,
+            preds
+        ], axis=1)
 
         # write predicitons
         table = pa.Table.from_pandas(preds)

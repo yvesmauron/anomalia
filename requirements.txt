@@ -24,3 +24,4 @@ torchvision
 mlflow
 hdbscan
 mne
+dash

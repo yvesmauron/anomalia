@@ -90,7 +90,8 @@ def train_smavra(
         ds_name (str): Dataset name in Azure Machine Leaning Services.
         output_dir (str): Output directory to be used in Azure ML Services.
         compute_node (str): Where it should be computed; not supported.
-        cuda_device (int) : which grafic card device to use [default : 0 (first device)]
+        cuda_device (int) : which grafic card device to use
+            [default : 0 (first device)]
     """
     # --------------------------------------------------------
     # init workspace

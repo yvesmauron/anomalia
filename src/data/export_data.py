@@ -4,7 +4,8 @@ from pathlib import Path
 import shutil
 
 
-def to_csv(input_path: str, output_path: str = "data/export"):
+def to_csv(input_path: str = "data/output/score/4d8ddb41e7f340c182a6a62699502d9f",
+           output_path: str = "data/export"):
     """Export data to csv format format
 
     Args:
@@ -37,7 +38,8 @@ def to_csv(input_path: str, output_path: str = "data/export"):
             os.path.join(
                 output_path,
                 f"{ os.path.basename(f)[:-12]}_full.csv"),
-            index=False
+            index=False,
+            float_format='%.15f'
         )
 
         col_names = [
@@ -47,5 +49,9 @@ def to_csv(input_path: str, output_path: str = "data/export"):
             os.path.join(
                 output_path,
                 f"{ os.path.basename(f)[:-12]}_reduced.csv"),
-            index=False
+            index=False,
+            float_format='%.15f'
         )
+
+
+to_csv()
