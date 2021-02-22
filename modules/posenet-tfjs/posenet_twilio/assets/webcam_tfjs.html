@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tfjs-Ponset Webcam</title>
+<!-- TesorflowJS -->    
+<!-- 3 Library options -->
+<!-- pure JavaScript version -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<!-- native C++ bindings
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-node"></script>
+-->    
+<!-- gpu support  (Linux Only) If your system has a NVIDIA® GPU with CUDA support
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-node-gpu"></script>
+-->
+<!-- Postnet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+</head>
+  <body>
+    <div id="room-controls">
+      <canvas id="canvas" style="position:absolute;top:0;left:0;z-index:1;"></canvas>
+      <video id="video" autoplay muted="true" position="relative" width="350" height="350"></video>
+      <br>
+      <br>
+      Skeleton movements
+<!--
+      Choose skaleton color<br>
+      <input type="color" id="html5colorpicker" onchange="javascript:clickColor(0, -1, -1, 5);set_skaleton_color();" value="#E633FF" style="width:15%;">
+      <button id="bcolor"></button>
+      <button id="button-join">Join Room</button>
+      <button id="button-leave" disabled>Leave Room</button>
+-->      
+    </div>
+  </body>
+  <script src="//media.twiliocdn.com/sdk/js/video/releases/2.3.0/twilio-video.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="webcam.js"></script>
+</html>
