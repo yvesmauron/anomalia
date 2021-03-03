@@ -1,3 +1,4 @@
+import click
 from src.visualization.explainer.html_components import build_header
 import src.visualization.visualize as viz
 from mlflow.tracking import MlflowClient
@@ -16,6 +17,15 @@ from scipy import stats
 
 import pyarrow.parquet as pq
 import os
+
+## added mm ##
+import torch
+#if torch.cuda.current_device() > 0:
+#    map_location=torch.cuda.device(0)
+#if not torch.cuda.is_available():
+#    map_location=torch.cuda.device('cpu')
+##############
+
 locale.setlocale(locale.LC_ALL, '')
 
 git_repo = "https://github.com/yvesmauron/time-series-anomaly-detection/tree"
@@ -590,6 +600,7 @@ def update_reconstruction(
     )
 
 
+<<<<<<< Updated upstream
 if __name__ == '__main__':
     app.run_server(debug=False)
 # server = app.server
