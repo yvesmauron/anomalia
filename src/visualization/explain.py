@@ -600,7 +600,6 @@ def update_reconstruction(
     )
 
 
-<<<<<<< Updated upstream
 if __name__ == '__main__':
     app.run_server(debug=False)
 # server = app.server
