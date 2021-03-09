@@ -1,7 +1,13 @@
+import pandas as pd
+from src.visualization import visualize as viz
+from datetime import datetime
+import pyodbc as odbc
+import uuid
 import pyarrow.parquet as pq
 import os
 from pathlib import Path
 import shutil
+from dotenv import find_dotenv, load_dotenv
 
 
 def to_csv(input_path: str = "data/output/score/4d8ddb41e7f340c182a6a62699502d9f",
@@ -54,4 +60,110 @@ def to_csv(input_path: str = "data/output/score/4d8ddb41e7f340c182a6a62699502d9f
         )
 
 
-to_csv()
+def generate_segment_markers(df: pd.DataFrame, qualifier_text: str) -> pd.DataFrame:
+
+    df = (
+        df
+        .groupby("epoch_id")
+        .agg(
+            StartOfSegment=pd.NamedAgg(column='timestamp', aggfunc='min'),
+            EndOfSegment=pd.NamedAgg(column='timestamp', aggfunc='max'))
+        .reset_index()
+        .loc[:, ["StartOfSegment", "EndOfSegment"]]
+    )
+    n_rows = len(df.index)
+    create_date = [datetime.now() for _ in range(n_rows)]
+    df = pd.DataFrame(dict(
+        EntityId=[uuid.uuid4() for _ in range(n_rows)], QualifierText=[qualifier_text for _ in range(n_rows)], CreatedDate=create_date, UpdatedDate=create_date, StartOfSegment=df.StartOfSegment, EndOfSegment=df.EndOfSegment, CorrectedByUser=0, IsCorrect=0, YAxis=3
+    ))
+
+    return df
+
+
+def insert_markers(df: pd.DataFrame):
+    load_dotenv(find_dotenv())
+
+    cnxn = odbc.connect(
+        f'DSN={os.getenv("DSN")};' +
+        f'UID={os.getenv("User")};' +
+        f'PWD={os.getenv("Password")};' +
+        f'Database={os.getenv("Database")}'
+    )
+    # (?,?,?,?,?,?,?,?,?)
+
+    cursor = cnxn.cursor()
+
+    for index, row in df.iterrows():
+        cursor.execute("""
+            INSERT INTO [dbo].[SegmentMarkers]
+            (
+                [EntityId],
+                [QualifierText],
+                [CreatedDate],
+                [UpdatedDate],
+                [StartOfSegment],
+                [EndOfSegment],
+                [CorrectedByUser],
+                [IsCorrect],
+                [YAxis]
+            )
+            VALUES (?,?,?,?,?,?,?,?,?)""",
+                       row.EntityId,
+                       row.QualifierText,
+                       row.CreatedDate,
+                       row.UpdatedDate,
+                       row.StartOfSegment,
+                       row.EndOfSegment,
+                       row.CorrectedByUser,
+                       row.IsCorrect,
+                       row.YAxis
+                       )
+
+    cnxn.commit()
+    cursor.close()
+
+
+def export_aitainer(
+    run_id: str = '4d8ddb41e7f340c182a6a62699502d9f',
+    test_lookback: int = 202012
+):
+
+    # run_id = '4d8ddb41e7f340c182a6a62699502d9f'
+    # test_lookback = 202012
+    test, components, explained, labels, probs = viz.latent_pca_data(
+        run_id=run_id,
+        test_lookback=test_lookback
+    )
+    test["labels"] = labels
+
+    label_dict = (
+        test.loc[test.labels == -1, ["file_name", "epoch"]]
+        .groupby("file_name")
+        .agg({"epoch": list})
+        .to_dict()["epoch"]
+    )
+
+    markers = None
+
+    for file_name, epochs in label_dict.items():
+        score_file = os.path.join(
+            "data/output/score", run_id, f"{file_name}_0_HRD.edf.parquet")
+
+        df = pq.read_table(score_file, columns=[
+            "epoch_id", "timestamp", "epoch_class", "epoch_mse"]).to_pandas()
+
+        default_values = generate_segment_markers(
+            df.loc[df.epoch_class == -1, :], "Default Wert"
+        )
+
+        disconnection = generate_segment_markers(
+            df.loc[df.epoch_id.isin(epochs) & (
+                df.epoch_mse > 2.2), :], "Diskonnektion"
+        )
+
+        if markers is not None:
+            markers = pd.concat([markers, default_values, disconnection])
+        else:
+            markers = pd.concat([default_values, disconnection])
+
+    insert_markers(markers)

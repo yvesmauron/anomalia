@@ -1,6 +1,7 @@
 # 1. predict train data
 # 2. predict segments
 # 3. visualize
+import psutil
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -121,7 +122,8 @@ pf["timestamp"] = pd.to_datetime(pf.timestamp)
 #
 
 normal = pf.loc[
-    (pf.timestamp < "2020-12-14 16:00:00.000000")
+    (pf.timestamp >= "2020-12-14 13:04:00.000000")
+    & (pf.timestamp < "2020-12-14 13:04:30.000000")
 ].reset_index(drop=True)
 
 artificial_lung = pf.loc[
@@ -154,37 +156,58 @@ pq.write_table(pa.Table.from_pandas(open_end),
 #     score_file_pattern="*"
 # )
 # python src/models/predict.py --run_id=4d8ddb41e7f340c182a6a62699502d9f --input_dir=reports/data/computer_bild/input --output_dir=reports/data/computer_bild/output --score_file_pattern="*"
-zmax = 6
-zmid = 3
-case = "open_end"
-df = pq.read_table(
-    f"reports/data/computer_bild/output/score/{RUN_ID}/{case}.parquet"
-).to_pandas()
-#"data/output/score/4d8ddb41e7f340c182a6a62699502d9f/20201214_120001_0_HRD.edf.parquet"#
-df = df.loc[:, ["timestamp"] + col_order + [c + "_mu" for c in col_order]]
+zmax = 10
+zmid = 7
+cases = ["normal", "closed_end"]
 
-df["mask_pressure_e"] = abs(
-    df["mask_press_mu"] - df["mask_press"]
-)
-df["resp_flow_e"] = abs(
-    df["resp_flow_mu"] - df["resp_flow"]
-)
-df["delivered_volum_e"] = abs(
-    df["delivered_volum_mu"] - df["delivered_volum"]
-)
 
-df["mask_pressure_z"] = (
-    (df["mask_pressure_e"] - scale_dict["mask_pressure_e"]
-     ["mean"]) / scale_dict["mask_pressure_e"]["std"]
-).apply(lambda x: x if x <= zmax else zmax)
-df["resp_flow_z"] = (
-    (df["resp_flow_e"] - scale_dict["resp_flow_e"]
-     ["mean"]) / scale_dict["resp_flow_e"]["std"]
-).apply(lambda x: x if x <= zmax else zmax)
-df["delivered_volum_z"] = (
-    (df["delivered_volum_e"] - scale_dict["delivered_volum_e"]
-     ["mean"]) / scale_dict["delivered_volum_e"]["std"]
-).apply(lambda x: x if x <= zmax else zmax)
+def process_df(run_id, case):
+    df = pq.read_table(
+        f"reports/data/computer_bild/output/score/{RUN_ID}/{case}.parquet"
+    ).to_pandas()
+
+    if case == "normal":
+        df = df.loc[
+            (df.timestamp >= "2020-12-14 13:04:14.000000")
+            & (df.timestamp < "2020-12-14 13:04:18.000000")
+        ].reset_index(drop=True)
+    elif case == "closed_end":
+        df = df.loc[
+            (df.timestamp >= "2020-12-14 16:10:49.000000")
+            & (df.timestamp < "2020-12-14 16:10:53.000000")
+        ].reset_index(drop=True)
+
+    #"data/output/score/4d8ddb41e7f340c182a6a62699502d9f/20201214_120001_0_HRD.edf.parquet"#
+    df = df.loc[:, ["timestamp"] + col_order + [c + "_mu" for c in col_order]]
+
+    df["mask_pressure_e"] = abs(
+        df["mask_press_mu"] - df["mask_press"]
+    )
+    df["resp_flow_e"] = abs(
+        df["resp_flow_mu"] - df["resp_flow"]
+    )
+    df["delivered_volum_e"] = abs(
+        df["delivered_volum_mu"] - df["delivered_volum"]
+    )
+
+    df["mask_pressure_z"] = (
+        (df["mask_pressure_e"] - scale_dict["mask_pressure_e"]
+         ["mean"]) / scale_dict["mask_pressure_e"]["std"]
+    ).apply(lambda x: x if x <= zmax else zmax)
+    df["resp_flow_z"] = (
+        (df["resp_flow_e"] - scale_dict["resp_flow_e"]
+         ["mean"]) / scale_dict["resp_flow_e"]["std"]
+    ).apply(lambda x: x if x <= zmax else zmax)
+    df["delivered_volum_z"] = (
+        (df["delivered_volum_e"] - scale_dict["delivered_volum_e"]
+         ["mean"]) / scale_dict["delivered_volum_e"]["std"]
+    ).apply(lambda x: x if x <= zmax else zmax)
+
+    return df
+
+
+dfs = [process_df(RUN_ID, case) for case in cases]
+
 
 # df["mask_pressure_upper"] = df["mask_press_mu"] + \
 #     2 * std_dict["mask_pressure_e"]
@@ -198,6 +221,149 @@ df["delivered_volum_z"] = (
 # df["delivered_volum_lower"] = df["delivered_volum_mu"] - \
 #     2 * std_dict["delivered_volum_e"]
 
+def get_traces(fig, df, color_palette, with_pred_lines=False, col=1, reversescale=False, colorscale="Aggrnyl"):
+    # Respiration Flow -----
+    fig.add_trace(
+        go.Scatter(
+            x=df.timestamp,
+            y=df.resp_flow,
+            mode='lines',
+            name='Resp Flow',
+            line=dict(
+                color=color_palette["true"]
+            )
+        ),
+        row=1,
+        col=col
+    )
+    if with_pred_lines:
+        fig.add_trace(
+            go.Scatter(
+                x=df.timestamp,
+                y=df.resp_flow_mu,
+                mode='lines',
+                name='Resp Flow',
+                line=dict(
+                    color=color_palette["resp_flow"]
+                )
+            ),
+            row=1,
+            col=col
+        )
+
+    fig.add_trace(
+        go.Heatmap(
+            name='',
+            x=df.timestamp,
+            y=[" " for _ in range(df.shape[0])],
+            z=df.resp_flow_z,
+            showscale=False,
+            colorscale=colorscale,
+            reversescale=reversescale,
+            zauto=False,
+            zmin=0,
+            zmid=zmid,
+            zmax=zmax
+        ),
+        row=2,
+        col=col
+    )
+
+    # Delivered Volume -----
+    fig.add_trace(
+        go.Scatter(
+            x=df.timestamp,
+            y=df.delivered_volum,
+            mode='lines',
+            name='Delivered Volume',
+            line=dict(
+                color=color_palette["true"]
+            )
+        ),
+        row=3,
+        col=col
+    )
+    if with_pred_lines:
+        fig.add_trace(
+            go.Scatter(
+                x=df.timestamp,
+                y=df.delivered_volum_mu,
+                mode='lines',
+                name='Delivered Volume',
+                line=dict(
+                    color=color_palette["deli_volu"]
+                )
+            ),
+            row=3,
+            col=col
+        )
+
+    fig.add_trace(
+        go.Heatmap(
+            name='',
+            x=df.timestamp,
+            y=[" " for _ in range(df.shape[0])],
+            z=df.delivered_volum_z,
+            showscale=False,
+            colorscale=colorscale,
+            reversescale=reversescale,
+            zmin=0,
+            zmid=zmid,
+            zmax=zmax
+        ),
+        row=4,
+        col=col
+    )
+
+    # Mask Pressure -----
+    fig.add_trace(
+        go.Scatter(
+            x=df.timestamp,
+            y=df.mask_press,
+            mode='lines',
+            name='Mask Pressure',
+            line=dict(
+                color=color_palette["true"]
+            )
+        ),
+        row=5,
+        col=col
+    )
+    if with_pred_lines:
+        fig.add_trace(
+            go.Scatter(
+                x=df.timestamp,
+                y=df.mask_press_mu,
+                mode='lines',
+                name='Mask Pressure',
+                line=dict(
+                    color=color_palette["mask_press"]
+                )
+            ),
+            row=5,
+            col=col
+        )
+
+    fig.add_trace(
+        go.Heatmap(
+            name='',
+            x=df.timestamp,
+            y=[" " for _ in range(df.shape[0])],
+            z=df.mask_pressure_z,
+            showscale=False,
+            colorscale=colorscale,
+            reversescale=reversescale,
+            zmin=0,
+            zmid=zmid,
+            zmax=zmax
+        ),
+        row=6,
+        col=col
+    )
+
+    return fig
+
+
 color_palette: dict = {
     "resp_flow": "rgba(247, 201, 77, 1)",
     "deli_volu": "rgba(64, 145, 182, 1)",
@@ -208,200 +374,62 @@ color_palette: dict = {
     "se_mask_pres": "rgba(105, 173, 82, 1)",
 }
 
-DEV = False
+
 # subplot -----
 fig = make_subplots(
     rows=6,
-    cols=1,
+    cols=len(cases),
     row_heights=[0.27, 0.06, 0.27, 0.06, 0.27, 0.06],
     shared_xaxes=True,
+    shared_yaxes=True,
     vertical_spacing=0,
-    row_titles=("Flow", "", "Volume", "",
-                "Pressure", ""),
+    horizontal_spacing=0,
+    column_titles=("Normal", "Nahezu verschlossene Kanüle"),
+    row_titles=("Flow", "", "Volumen", "",
+                "Druck", ""),
+    # row_titles=("Fluss [L/Min]", "", "Volumen [mL]", "",
+    #             "Druck [hPA]", ""),
     specs=[
-        [{"b": 0}],
-        [{"b": 0.02}],
-        [{"b": 0}],
-        [{"b": 0.02}],
-        [{"b": 0}],
-        [{"b": 0.02}],
+        [{"b": 0, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
+        [{"b": 0.02, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
+        [{"b": 0, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
+        [{"b": 0.02, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
+        [{"b": 0, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
+        [{"b": 0.02, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
     ]
 )
 
-# Respiration Flow -----
-fig.add_trace(
-    go.Scatter(
-        x=df.timestamp,
-        y=df.resp_flow,
-        mode='lines',
-        name='Resp Flow',
-        line=dict(
-            color=color_palette["true"]
-        )
-    ),
-    row=1,
-    col=1
-)
-if DEV:
-    fig.add_trace(
-        go.Scatter(
-            x=df.timestamp,
-            y=df.resp_flow_mu,
-            mode='lines',
-            name='Resp Flow',
-            line=dict(
-                color=color_palette["resp_flow"]
-            )
-        ),
-        row=1,
-        col=1
-    )
 
-fig.add_trace(
-    go.Heatmap(
-        name='',
-        x=df.timestamp,
-        y=[" " for _ in range(df.shape[0])],
-        z=df.resp_flow_z,
-        showscale=False,
-        zauto=False,
-        zmin=0,
-        zmid=zmid,
-        zmax=zmax
-    ),
-    row=2,
-    col=1
-)
+colorscale = "RdYlGn"  # "Aggrnyl"
 
-
-# Delivered Volume -----
-fig.add_trace(
-    go.Scatter(
-        x=df.timestamp,
-        y=df.delivered_volum,
-        mode='lines',
-        name='Delivered Volume',
-        line=dict(
-            color=color_palette["true"]
-        )
-    ),
-    row=3,
-    col=1
-)
-if DEV:
-    fig.add_trace(
-        go.Scatter(
-            x=df.timestamp,
-            y=df.delivered_volum_mu,
-            mode='lines',
-            name='Delivered Volume',
-            line=dict(
-                color=color_palette["deli_volu"]
-            )
-        ),
-        row=3,
-        col=1
-    )
-
-
-fig.add_trace(
-    go.Heatmap(
-        name='',
-        x=df.timestamp,
-        y=[" " for _ in range(df.shape[0])],
-        z=df.delivered_volum_z,
-        showscale=False,
-        zmin=0,
-        zmid=zmid,
-        zmax=zmax
-    ),
-    row=4,
-    col=1
-)
-
-
-# Mask Pressure -----
-fig.add_trace(
-    go.Scatter(
-        x=df.timestamp,
-        y=df.mask_press,
-        mode='lines',
-        name='Mask Pressure',
-        line=dict(
-            color=color_palette["true"]
-        )
-    ),
-    row=5,
-    col=1
-)
-if DEV:
-    fig.add_trace(
-        go.Scatter(
-            x=df.timestamp,
-            y=df.mask_press_mu,
-            mode='lines',
-            name='Mask Pressure',
-            line=dict(
-                color=color_palette["mask_press"]
-            )
-        ),
-        row=5,
-        col=1
-    )
-
-fig.add_trace(
-    go.Heatmap(
-        name='',
-        x=df.timestamp,
-        y=[" " for _ in range(df.shape[0])],
-        z=df.mask_pressure_z,
-        showscale=False,
-        zmin=0,
-        zmid=zmid,
-        zmax=zmax
-    ),
-    row=6,
-    col=1
-)
+for i in range(len(dfs)):
+    fig = get_traces(fig, dfs[i], color_palette, col=i+1,
+                     colorscale=colorscale, reversescale=True)
 
 
 fig.update_layout(
     title_text=f"",
     legend_title=None,
     showlegend=False,
-    template="plotly_white",
-    # legend=dict(
-    #     orientation="h",
-    #     yanchor="bottom",
-    #     y=-.15,
-    #     xanchor="right",
-    #     x=1
-    # )
-    # font=dict(
-    # family="Courier New, monospace",
-    # size=18
-    # )
+    template="plotly_white"
 )
+fig.update_xaxes(showticklabels=False)  # hide all the xticks
+fig.update_yaxes(showticklabels=False)
 
+for i in fig['layout']['annotations']:
+    i['font'] = dict(size=20, color='#000000')
 
 fig.show()
-# fig.write_html(f"reports/figures/computer_bild/{case}.html")
+
+formats = ["svg", "png", "jpg", "pdf"]
+
+for f in formats:
+    fig.write_image(
+        f"reports/figures/computer_bild/Visualizierung.{f}",
+        width=1200,
+        height=800
+
+    )
 
 
-fig2 = go.Figure()
-
-
-hm = go.Heatmap(
-    x=df.timestamp,
-    y=[" " for _ in range(df.shape[0])],
-    z=df.delivered_volum_e,
-    showscale=False
-)
-
-
-fig2.add_trace(
-    hm
-
-)
-
-fig2.show()
+fig.write_html(f"reports/figures/computer_bild/Visualizierung.html")

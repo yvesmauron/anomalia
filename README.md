@@ -74,6 +74,8 @@ python src/visualization/explain.py
 
 Please note that this project is currently under active development and by no means finished. Additional features, such as workflow tool (like e.g. Airflow) etc. are prioritized, planned and implemented by the project team. Please contact the project team if you plan to contribute, there are lots of things to do :-).
 
+To sync anomalies, you need to create a connection the AiTrainer Database, which is currently done via pyodbc. To setup the connection, please follow the instructions [here](https://github.com/mkleehammer/pyodbc/wiki) for your respective operating system.
+
 ## Clean up mlruns directory
 
 You can clean up the absolute paths in the mlruns directory using the following command:

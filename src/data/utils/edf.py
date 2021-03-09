@@ -8,6 +8,15 @@ logger.setLevel(logging.ERROR)
 
 
 def process_resmed(file_path: str, station: str) -> pd.DataFrame:
+    """process resmed files
+
+    Args:
+        file_path (str): path of the edf files
+        station (str): station
+
+    Returns:
+        pd.DataFrame: returns a DataFrame with breathing data
+    """
     edf_file = mne.io.read_raw_edf(file_path)
 
     channels = edf_file.ch_names
@@ -32,3 +41,8 @@ def process_resmed(file_path: str, station: str) -> pd.DataFrame:
     edf_df["station"] = station
 
     return edf_df
+
+
+edf_file = mne.io.read_raw_edf("data/20201204_114117_0_HRD.edf")
+
+edf_file.info
