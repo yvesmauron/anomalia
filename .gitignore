@@ -100,7 +100,7 @@ target/
 
 
 # Martins folders
-scripts_logs_mm/
+scripts_mm/
 start_dash.sh
 start_mlflow.sh
 
