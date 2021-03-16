@@ -148,14 +148,14 @@ def predict_file(
 )
 @click.option(
     '--input_dir',
-    type=click.Path(),
-    default="reports/data/computer_bild/input",
+    type=click.Path(),    
+    default="data/processed/resmed/score",
     help="input directory holding the data to be predicted."
 )
 @click.option(
     '--output_dir',
-    type=click.Path(),
-    default="reports/data/computer_bild/output",
+    type=click.Path(),   
+    default="data/output/",
     help="the directory the predictions should be written to."
 )
 @click.option(
@@ -197,8 +197,8 @@ def predict_file(
 )
 def predict_smavra(
     run_id: str,
-    input_dir: str = "reports/data/computer_bild/input",
-    output_dir: str = "reports/data/computer_bild/output",
+    input_dir: str = "data/processed/resmed/score",
+    output_dir: str = "data/scored/resmed",
     preprocessing_config: str = "config/preprocessing_config.json",
     seq_len: int = 750,
     device: str = "cuda",
