@@ -40,3 +40,15 @@ General guide lines working with conda environments:
 [https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html]
 
 
+##########
+# VSCode #
+##########
+a) change python interpreter to according conda env
+
+b) activate the particular conda environment in the code terminal shell
+
+#-- problems under conda environment --#
+if your are expericencing issues with this environment in the integrated terminal,
+we recommend you let the Python extension change 
+"terminal.integrated.inheritEnv" to false 
+in your user settings
