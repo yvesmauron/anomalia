@@ -217,15 +217,6 @@ def latent_pca_data(
     latent_dir = os.path.join("data/output/explain/latent", run_id)
     latents = []
 
-    # for p in Path(latent_dir).iterdir():
-    #     df = pq.read_table(p).to_pandas()
-    #     latents.append(df)
-
-    # train = pd.concat(latents, axis=0)
-    # train = train.loc[train["epoch_class"] >= 0, :]
-    #
-    # train_scaled = scaler.transform(train.iloc[:, :latent_size])
-
     latents = []
     test_paths = [
         p for p in Path(latent_dir).iterdir()
