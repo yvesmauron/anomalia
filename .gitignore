@@ -97,4 +97,10 @@ target/
 /mlruns/
 /models/
 /reports/figures/
-/reports/data/
+
+
+# Martins folders
+scripts_mm/
+start_dash.sh
+start_mlflow.sh
+

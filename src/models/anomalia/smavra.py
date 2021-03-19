@@ -22,6 +22,7 @@ class SMAVRA(nn.Module):
         dropout: float = 0.1,
         batch_first: bool = True,
         cuda: bool = True,
+        cuda_device: int = 0,
         reconstruction_loss_function: str = 'MSELoss',
         mode: str = 'dynamic',
         rnn_type: str = 'LSTM',
@@ -46,6 +47,8 @@ class SMAVRA(nn.Module):
                 Defaults to True.
             cuda (bool, optional): whether to use cuda or not.
                 Defaults to True.
+            cuda_device (int, optional): cuda index to use specific gpu device.
+                Defaults to 0 (first device).
             reconstruction_loss_function (str, optional): loss for
                 reconstruction error. Defaults to 'MSELoss'.
             mode (str, optional): statis or dynamic.
@@ -64,6 +67,7 @@ class SMAVRA(nn.Module):
         """
         super(SMAVRA, self).__init__()
         self.use_cuda = cuda
+        self.cuda_device = cuda_device
 
         # check if cuda is available to verify if cuda can be used
         if not torch.cuda.is_available() and self.use_cuda:

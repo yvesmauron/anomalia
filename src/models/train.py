@@ -120,6 +120,7 @@ def train_smavra(
         'dropout': 0.5,
         'batch_first': True,
         'cuda': USE_CUDA,
+        'cuda_device': cuda_device,
         'mode': 'static',
         'rnn_type': 'LSTM',
         'seq_len': 750,
