@@ -97,6 +97,7 @@ target/
 /mlruns/
 /models/
 /reports/figures/
+/reports/data/
 
 
 # Martins folders
