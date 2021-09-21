@@ -43,6 +43,10 @@ def process_resmed(file_path: str, station: str) -> pd.DataFrame:
     return edf_df
 
 
-edf_file = mne.io.read_raw_edf("data/20201204_114117_0_HRD.edf")
+edf_file = process_resmed("data/20201204_114117_0_HRD.edf", "bianca")
+
+
+edf_file.dtypes
+
 
 edf_file.info

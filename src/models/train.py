@@ -25,7 +25,7 @@ azure_logger.setLevel(logging.WARNING)
 # --------------------------------------------------------
 # set globals
 TEST_MODE = False
-EXPERIMENT_NAME = 'SMAVRA'
+EXPERIMENT_NAME = '/Users/yves.mauron@trivadis.com/SMAVRA'
 USE_CUDA = True
 
 
@@ -45,7 +45,7 @@ USE_CUDA = True
 @click.option(
     '--n_epochs',
     type=click.INT,
-    default=2265,
+    default=1500,
     help="Numbers of epochs the model should be trained."
 )
 @click.option(

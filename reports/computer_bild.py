@@ -414,7 +414,7 @@ fig.update_layout(
     template="plotly_white"
 )
 fig.update_xaxes(showticklabels=False)  # hide all the xticks
-fig.update_yaxes(showticklabels=False)
+#fig.update_yaxes(showticklabels=True)
 
 for i in fig['layout']['annotations']:
     i['font'] = dict(size=20, color='#000000')
