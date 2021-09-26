@@ -16,11 +16,14 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-RUN_ID = "4d8ddb41e7f340c182a6a62699502d9f"
+RUN_ID = "92bd93c5895144558545f21c6e5b2e08" # "4d8ddb41e7f340c182a6a62699502d9f"
 DEVICE = "cuda"
 TRAIN_DATA_PATH = "data/processed/resmed/train/train.pt"
 
-mlflow_client = MlflowClient()
+mlflow_client = MlflowClient(
+    tracking_uri="databricks",
+    registry_uri="databricks"
+)
 
 # get processing info
 with tempfile.TemporaryDirectory() as tmp_dir:
@@ -31,9 +34,11 @@ with tempfile.TemporaryDirectory() as tmp_dir:
     ), "r") as f:
         preprocessing_config = json.load(f)
 
+
+
 # load model
 smavra = mlflow.pytorch.load_model(
-    'runs:/' + RUN_ID + '/model',
+    "dbfs:/databricks/mlflow-tracking/1480730348517746/92bd93c5895144558545f21c6e5b2e08/artifacts/model", #'runs:/' + RUN_ID + '/model',
     map_location="cuda:0"
 )
 smavra.eval()
@@ -221,21 +226,25 @@ dfs = [process_df(RUN_ID, case) for case in cases]
 # df["delivered_volum_lower"] = df["delivered_volum_mu"] - \
 #     2 * std_dict["delivered_volum_e"]
 
-def get_traces(fig, df, color_palette, with_pred_lines=False, col=1, reversescale=False, colorscale="Aggrnyl"):
+def get_traces(fig, df, color_palette, with_true_lines=True, with_pred_lines=False, col=1, reversescale=False, colorscale="Aggrnyl"):
     # Respiration Flow -----
-    fig.add_trace(
-        go.Scatter(
-            x=df.timestamp,
-            y=df.resp_flow,
-            mode='lines',
-            name='Resp Flow',
-            line=dict(
-                color=color_palette["true"]
-            )
-        ),
-        row=1,
-        col=col
-    )
+    assert with_pred_lines or with_true_lines, \
+        "either pred or true lines need to be set"
+    
+    if with_true_lines:
+        fig.add_trace(
+            go.Scatter(
+                x=df.timestamp,
+                y=df.resp_flow,
+                mode='lines',
+                name='Resp Flow',
+                line=dict(
+                    color=color_palette["true"]
+                )
+            ),
+            row=1,
+            col=col
+        )
     if with_pred_lines:
         fig.add_trace(
             go.Scatter(
@@ -250,7 +259,7 @@ def get_traces(fig, df, color_palette, with_pred_lines=False, col=1, reversescal
             row=1,
             col=col
         )
-
+    
     fig.add_trace(
         go.Heatmap(
             name='',
@@ -270,19 +279,20 @@ def get_traces(fig, df, color_palette, with_pred_lines=False, col=1, reversescal
     )
 
     # Delivered Volume -----
-    fig.add_trace(
-        go.Scatter(
-            x=df.timestamp,
-            y=df.delivered_volum,
-            mode='lines',
-            name='Delivered Volume',
-            line=dict(
-                color=color_palette["true"]
-            )
-        ),
-        row=3,
-        col=col
-    )
+    if with_true_lines:
+        fig.add_trace(
+            go.Scatter(
+                x=df.timestamp,
+                y=df.delivered_volum,
+                mode='lines',
+                name='Delivered Volume',
+                line=dict(
+                    color=color_palette["true"]
+                )
+            ),
+            row=3,
+            col=col
+        )
     if with_pred_lines:
         fig.add_trace(
             go.Scatter(
@@ -316,19 +326,20 @@ def get_traces(fig, df, color_palette, with_pred_lines=False, col=1, reversescal
     )
 
     # Mask Pressure -----
-    fig.add_trace(
-        go.Scatter(
-            x=df.timestamp,
-            y=df.mask_press,
-            mode='lines',
-            name='Mask Pressure',
-            line=dict(
-                color=color_palette["true"]
-            )
-        ),
-        row=5,
-        col=col
-    )
+    if with_true_lines:
+        fig.add_trace(
+            go.Scatter(
+                x=df.timestamp,
+                y=df.mask_press,
+                mode='lines',
+                name='Mask Pressure',
+                line=dict(
+                    color=color_palette["true"]
+                )
+            ),
+            row=5,
+            col=col
+        )
     if with_pred_lines:
         fig.add_trace(
             go.Scatter(
@@ -374,7 +385,8 @@ color_palette: dict = {
     "se_mask_pres": "rgba(105, 173, 82, 1)",
 }
 
-
+with_pred_lines = True
+with_true_lines = True
 # subplot -----
 fig = make_subplots(
     rows=6,
@@ -384,11 +396,11 @@ fig = make_subplots(
     shared_yaxes=True,
     vertical_spacing=0,
     horizontal_spacing=0,
-    column_titles=("Normal", "Nahezu verschlossene Kanüle"),
-    row_titles=("Flow", "", "Volumen", "",
-                "Druck", ""),
-    # row_titles=("Fluss [L/Min]", "", "Volumen [mL]", "",
-    #             "Druck [hPA]", ""),
+    column_titles=("Normal", "Blockage in Cannula"),
+    # row_titles=("Flow", "", "Volume", "",
+    #             "Pressure", ""),
+    row_titles=("Flow [L/Min]", "", "Volume [mL]", "",
+                "Pressure [hPA]", ""),
     specs=[
         [{"b": 0, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
         [{"b": 0.02, "l": 0 if i == 0 else 0.04} for i in range(len(cases))],
@@ -400,12 +412,18 @@ fig = make_subplots(
 )
 
 
-colorscale = "RdYlGn"  # "Aggrnyl"
+colorscale = "RdYlGn"  # Aggrnyl" # 
 
 for i in range(len(dfs)):
     fig = get_traces(fig, dfs[i], color_palette, col=i+1,
-                     colorscale=colorscale, reversescale=True)
+                     colorscale=colorscale, reversescale=True, 
+                     with_pred_lines=with_pred_lines,
+                     with_true_lines=with_true_lines)
 
+
+pred_postfix = "_pred" if with_pred_lines else ""
+
+input_postfix = "_input" if with_true_lines else ""
 
 fig.update_layout(
     title_text=f"",
@@ -419,17 +437,17 @@ fig.update_xaxes(showticklabels=False)  # hide all the xticks
 for i in fig['layout']['annotations']:
     i['font'] = dict(size=20, color='#000000')
 
-fig.show()
+#fig.show()
 
 formats = ["svg", "png", "jpg", "pdf"]
 
 for f in formats:
     fig.write_image(
-        f"reports/figures/computer_bild/Visualizierung.{f}",
+        f"reports/figures/computer_bild/Visualizierung{input_postfix}{pred_postfix}.{f}",
         width=1200,
         height=800
 
     )
 
 
-fig.write_html(f"reports/figures/computer_bild/Visualizierung.html")
+fig.write_html(f"reports/figures/computer_bild/Visualizierung{input_postfix}{pred_postfix}.html")

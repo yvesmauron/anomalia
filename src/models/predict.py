@@ -264,7 +264,7 @@ def predict_smavra(
 
     # load model
     smavra = mlflow.pytorch.load_model(
-        'runs:/' + run_id + '/model',
+        'dbfs:/databricks/mlflow-tracking/1480730348517746/92bd93c5895144558545f21c6e5b2e08/artifacts/model', # 'runs:/' + run_id + '/model',
         map_location="cuda:0"
     )
 
